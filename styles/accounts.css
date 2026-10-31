@@ -67,3 +67,8 @@
   color: var(--muted);
   font-size: 12px;
 }
+
+/* Keep every signup error in the same slot so the form doesn't jump around */
+.account-form [role='status'][data-error='true'] {
+  color: var(--pink-ink);
+}

@@ -42,3 +42,55 @@ create policy "create own profile" on public.viewer_profiles for insert to authe
 -- Check ownership before and after updates so user_id cannot be reassigned
 create policy "update own profile" on public.viewer_profiles for update to authenticated
   using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+
+-- Names are compared without case or outer spaces so Viewer and viewer cannot both register
+create unique index viewer_profiles_unique_name
+on public.viewer_profiles (lower(btrim(display_name)));
+
+-- Older accounts may not have opened Me yet but their chosen name still needs reserving
+insert into public.viewer_profiles (user_id, display_name)
+select u.id, coalesce(nullif(left(btrim(u.raw_user_meta_data->>'display_name'), 30), ''), 'Viewer')
+from auth.users u
+where not exists (select 1 from public.viewer_profiles p where p.user_id = u.id);
+
+-- A browser check is helpful but this insert is what stops simultaneous signups claiming 1 name
+create function public.reserve_viewer_name()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  insert into public.viewer_profiles (user_id, display_name)
+  values (
+    new.id,
+    coalesce(nullif(left(btrim(new.raw_user_meta_data->>'display_name'), 30), ''), 'Viewer')
+  );
+  return new;
+end;
+$$;
+
+revoke all on function public.reserve_viewer_name() from public, anon, authenticated;
+
+create trigger reserve_viewer_name_on_signup
+after insert on auth.users
+for each row execute function public.reserve_viewer_name();
+
+-- Return only availability so checking a name never exposes account details or preferences
+create function public.username_available(p_name text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select char_length(btrim(p_name)) between 1 and 30
+    and not exists (
+      select 1 from public.viewer_profiles
+      where lower(btrim(display_name)) = lower(btrim(p_name))
+    );
+$$;
+
+revoke all on function public.username_available(text) from public;
+grant execute on function public.username_available(text) to anon, authenticated;
+

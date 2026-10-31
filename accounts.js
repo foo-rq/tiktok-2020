@@ -241,7 +241,7 @@ const Accounts = (() => {
         '<section class="viewer-guest"><div class="guest-portrait" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 22a8 8 0 0 1 16 0"/></svg></div><h3>Sign up for an account</h3><p>Save your likes and follow creators.</p>' +
 
         // Keep this on Me so the reminder stays visible after the form closes
-        (showEmailNotice === true ? '<div class="signup-email-note" role="status"><p>Check your email to confirm your account</p><small>Check spam if you can&#39;t find it</small></div>' : '') +
+        (showEmailNotice === true ? '<div class="signup-email-note" role="status"><p>Please check your email.</p><small>Check spam if you can&#39;t find it</small></div>' : '') +
         '<button class="primary" id="signup">Sign up</button><p>Already have an account? <button class="text-button" id="login">Log in</button></p></section>',
         { tab: 'me', reopen: profile }
       );
@@ -312,6 +312,14 @@ const Accounts = (() => {
     };
   }
 
+  // This only returns a yes or no so signup never needs access to other profiles
+  async function usernameAvailable(name) {
+    const { data, error } = await client.rpc('username_available', { p_name: name });
+    if (error) throw error;
+    if (typeof data !== 'boolean') throw new Error('Could not check username. Try again.');
+    return data;
+  }
+
   function emailForm(login = false, back) {
     if (!client) {
       toast('Accounts are unavailable. Reload to try again.');
@@ -355,6 +363,8 @@ const Accounts = (() => {
 
       // Block repeat submissions while the first request is still running
       if (submit.disabled || !form.reportValidity()) return;
+      // Clear the previous error colour while checking this submission
+      status.dataset.error = 'false';
       const email = emailInput.value.trim(),
         password = passwordInput.value;
 
@@ -363,19 +373,34 @@ const Accounts = (() => {
 
       // Whitespace passes the browser's required check but isn't a usable name
       if (!login && !name) {
+        status.dataset.error = 'true';
         status.textContent = 'Enter a display name.';
         return;
       }
 
       // Apply the new password rules at signup without rejecting an existing login
       if (!login && !validPassword(password)) {
+        status.dataset.error = 'true';
         status.textContent = passwordRule;
         return;
       }
       submit.disabled = true;
       status.textContent = login ? 'Logging in...' : 'Creating account...';
       if (forgot) forgot.disabled = true;
+      let checkedName = false;
       try {
+
+        // Check before signup so a taken name doesn't create an account or send mail
+        if (!login) {
+          const available = await usernameAvailable(name);
+          if ($('#email-form') !== form) return;
+          checkedName = true;
+          if (!available) {
+            status.dataset.error = 'true';
+            status.textContent = 'Username already taken';
+            return;
+          }
+        }
 
         // Both paths share the form but only signup sends a display name
         const result = login
@@ -401,19 +426,37 @@ const Accounts = (() => {
         // Confirmed accounts can come back without identities instead of an error
         // Stay here with the message rather than suggesting another email was sent
         if (!login && result.data.user?.identities?.length === 0) {
-          status.textContent = 'An account already exists with this email';
+          status.dataset.error = 'true';
+          status.textContent = 'An account with this email already exists';
           return;
         }
 
         // A new signup returns to Me with the email reminder kept on that page
         profile(true);
       } catch (error) {
+        if ($('#email-form') !== form) return;
+        status.dataset.error = 'true';
+
+        // Another signup can claim the name after our first check
+        // The database rejects that race so check again to show the useful message
+        if (checkedName && !['user_already_exists', 'email_exists'].includes(error.code)) {
+          try {
+            if (!(await usernameAvailable(name))) {
+              status.textContent = 'Username already taken';
+              return;
+            }
+          } catch {
+
+            // Keep the original signup error if the second availability check fails
+          }
+        }
+
         status.textContent =
 
           // Duplicate signup can also arrive as an error rather than an empty identity list
           // Keep delivery errors on the form so they aren't mistaken for success
           error.code === 'user_already_exists' || error.code === 'email_exists'
-            ? 'An account already exists with this email'
+            ? 'An account with this email already exists'
             : error.code === 'email_address_not_authorized'
               ? 'Email delivery is in private testing. Use the email on your project account for now.'
               : error.message || 'Account service unavailable. Try again.';
