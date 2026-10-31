@@ -351,3 +351,84 @@ retry.onclick=load;load();
 }
 
 // Use text nodes for archived names and comments so markup stays literal
+function appendComment(c,container=$('#sheet-body')){
+const row=document.createElement('div');row.className='comment';
+const avatar=document.createElement('span');avatar.className='bubble-avatar';avatar.textContent=Array.from(c.name||'?')[0];avatar.setAttribute('aria-hidden','true');
+const body=document.createElement('div');body.className='comment-body';
+const name=document.createElement('strong');name.textContent=c.name||'Viewer';
+const text=document.createElement('p');text.textContent=c.text;
+
+// Keep the full timestamp separate from the date shown in the row
+const date=document.createElement('time');date.dateTime=c.createdAt;date.textContent=c.date||c.createdAt.slice(0,10);
+body.append(name,text,date);
+row.append(avatar,body);container.append(row);
+}
+$('#foryou').onclick=()=>setMode('foryou');$('#following').onclick=()=>{if(!Accounts.signedIn){Panels.signup();return;}setMode('following');};$('#back-feed').onclick=()=>setMode('foryou');$('#home').onclick=()=>{sheet.close();setMode('foryou');};
+function about(){openSheet('About','<h3>TikTok 2020</h3><p>'+POSTS.length.toLocaleString()+' video links. Confirmed unavailable videos are removed from the collection. A playback failure may be temporary; use Retry or scroll to the next video.</p><p>Guest preferences save on this device. Signed-in profiles save to your account. Confirm your email when signing up. Other sign-in methods aren’t available yet.</p>'+'<p>Videos keep their original proportions, with black space where needed. Playback uses TikTok streams resolved by fxTikTok, a third-party service. Stream failures offer Retry and do not remove videos from the collection.</p><p>Descriptions are collection notes. Dates are decoded from the original video IDs in UTC. Archived comments load when opened. Only comments dated before January 1, 2021 are included. Collections are partial. Display names may have changed since posting.</p>'+'<p>The original UI used Proxima Nova. The app uses Metropolis unless Proxima Nova is installed.</p>');}$('#info').onclick=about;
+function refreshSoundButtons(){
+feed.querySelectorAll('.enable-sound').forEach(button=>{
+button.setAttribute('aria-label',audioEnabled?'Mute video':'Unmute video');
+button.setAttribute('aria-pressed',String(audioEnabled));
+button.querySelector('.sound-on').style.display=audioEnabled?'':'none';
+button.querySelector('.sound-off').style.display=audioEnabled?'none':'';
+});
+}
+
+// Muting should never resume a video that the user paused
+function toggleSound(){
+audioEnabled=!audioEnabled;
+send(current,audioEnabled?'unMute':'mute');
+refreshSoundButtons();
+}
+$('#create').onclick=()=>openSheet('Create','<div class="empty-comments"><h3>Video creation is disabled</h3><p>You can watch and browse the archive.</p></div>');
+$('#inbox').onclick=()=>Panels.inbox();
+$('#me').onclick=()=>Accounts.profile();
+function playPost(p){
+if(failedVideos.has(p.id)){toast('This video is unavailable.');return;}
+finishWatch();send(current,'pause');observer.disconnect();[...feed.children].forEach(releasePlayer);current=null;feed.replaceChildren();
+mode='foryou';$('#following').classList.remove('active');$('#foryou').classList.add('active');$('#empty').hidden=true;
+sheet.close();feed.scrollTop=0;addPost(p);
+}
+function listPost(p,container){
+const button=document.createElement('button');button.className='list-button video-tile';button.setAttribute('aria-label','Watch @'+p.creator+': '+p.caption);
+button.append(Panels.thumbnail(p));
+const fallback=document.createElement('span');fallback.className='tile-fallback';fallback.textContent=p.caption||'@'+p.creator;
+const label=document.createElement('span');label.className='tile-label';label.textContent='@'+p.creator;
+button.append(fallback,label);button.onclick=()=>playPost(p);container.append(button);
+}
+$('#discover').onclick=()=>Panels.discover();
+
+// Trackpad momentum sends many events for 1 gesture
+// Keep those events together instead of skipping several videos
+let wheelLocked=false,wheelDelta=0,wheelIdle,scrollBusyUntil=0;
+function stepFeed(direction){
+
+// Let this snap finish before starting another move
+if(performance.now()<scrollBusyUntil||!current)return;
+const target=direction>0?current.nextElementSibling:current.previousElementSibling;
+if(!target)return;
+scrollBusyUntil=performance.now()+400;
+feed.scrollTo({top:feed.scrollTop+target.getBoundingClientRect().top-feed.getBoundingClientRect().top,behavior:'smooth'});
+}
+function handleWheel(event){
+
+// Leave zoom and horizontal gestures to the browser
+if(event.ctrlKey||Math.abs(event.deltaX)>Math.abs(event.deltaY))return;
+event.preventDefault();clearTimeout(wheelIdle);
+
+// A quiet gap ends this trackpad gesture and unlocks the next one
+wheelIdle=setTimeout(()=>{wheelLocked=false;wheelDelta=0;},200);
+if(wheelLocked)return;
+
+// Wait for enough movement to count as an intentional scroll
+wheelDelta+=event.deltaY;if(Math.abs(wheelDelta)<24)return;
+wheelLocked=true;stepFeed(Math.sign(wheelDelta));
+}
+feed.addEventListener('wheel',handleWheel,{passive:false});
+window.addEventListener('keydown',event=>{if(sheet.open||!['ArrowDown','ArrowUp'].includes(event.key))return;event.preventDefault();if(!event.repeat)stepFeed(event.key==='ArrowDown'?1:-1);});
+setMode('foryou');
+
+// The feed can start while the account loads
+// If loading fails keep browsing but don't pretend account preferences loaded
+Accounts.init(state).then(saved=>{state=saved;refreshButtons();}).catch(()=>toast('Account preferences could not load. Reload to retry.'));
+
