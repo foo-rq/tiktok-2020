@@ -1,0 +1,115 @@
+body {
+  display: flex;
+  justify-content: center;
+  min-height: 100dvh;
+}
+
+/* The desktop rail is separate from the player so it does not cover the video */
+.desktop {
+  width: 320px;
+  padding: 48px 48px 32px 0;
+  position: relative;
+}
+
+.desktop h1 {
+  font-size: 28px;
+  letter-spacing: -0.6px;
+  margin: 0 0 24px;
+  font-weight: 700;
+}
+
+.desktop .quiet {
+  font-size: 14px;
+  color: var(--desktop-ink);
+  line-height: 1.6;
+}
+
+/* Keep secondary desktop controls together near the bottom of the rail */
+.desktop-bottom {
+  position: absolute;
+  bottom: 40px;
+  display: grid;
+  gap: 16px;
+}
+
+.desktop-bottom button {
+  padding: 0;
+  text-align: left;
+  font-size: 13px;
+}
+
+.desktop-bottom small {
+  color: var(--desktop-ink);
+  opacity: 0.65;
+  font-size: 12px;
+}
+
+/* Keep the player frame centred and let the smaller screen rules take over below */
+.phone {
+  width: 420px;
+  height: 100dvh;
+  max-height: 940px;
+  position: relative;
+  background: var(--black);
+  overflow: clip;
+}
+
+/* Overlay the feed tabs rather than giving them a separate block that resizes the video */
+.phone header {
+  position: absolute;
+  top: 0;
+  width: 100%;
+  z-index: 3;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: center;
+  height: 96px;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: 16px;
+  pointer-events: none;
+  text-shadow: 0 1px 5px var(--black);
+  background: linear-gradient(var(--header-shade), var(--clear));
+}
+
+header button {
+  pointer-events: auto;
+}
+
+.tab {
+  font-size: 17px;
+  font-weight: 700;
+  opacity: 0.65;
+  padding: 12px 0;
+  white-space: nowrap;
+}
+
+.tab.active {
+  opacity: 1;
+}
+
+/* Mark the selected feed with a short underline instead of shifting the tab text */
+.tab.active:after {
+  content: '';
+  display: block;
+  width: 22px;
+  height: 2px;
+  margin: 6px auto -8px;
+  background: var(--white);
+}
+
+.divider {
+  height: 12px;
+  width: 1px;
+  background: var(--white);
+  opacity: 0.4;
+}
+
+#info {
+  position: absolute;
+  right: 16px;
+  font-size: 11px;
+  padding: 8px;
+  opacity: 0.8;
+}
+
