@@ -504,13 +504,19 @@
       button.setAttribute('aria-describedby', 'signup-status');
       methods.append(button);
     });
-    const status = node('p', 'signup-status', 'Confirm your email to finish signing up. Other sign-in methods are unavailable.');
+    const status = node('p', 'signup-status', 'Other sign-in methods are unavailable.');
     status.id = 'signup-status';
-    const footer = node('div', 'signup-footer');
-    const switchMode = node('button', 'signup-switch', login ? 'Sign up' : 'Log in');
-    switchMode.onclick = () => signup(!login,back);
-    footer.append(document.createTextNode(login ? 'Don’t have an account? ' : 'Already have an account? '), switchMode);
-    body.append(title, phone, divider, methods, status, footer);
+    body.append(title, phone, divider, methods, status);
+
+    // Signup goes back to Me where the login action already lives
+    // Only the login screen needs this switch to signup
+    if (login) {
+      const footer = node('div', 'signup-footer');
+      const switchMode = node('button', 'signup-switch', 'Sign up');
+      switchMode.onclick = () => signup(false,back);
+      footer.append(document.createTextNode('Don’t have an account? '), switchMode);
+      body.append(footer);
+    }
   }
   root.Panels = { discover, share, sound, details, signup, page, authPage, creator, thumbnail, renderPosts, inbox };
   if (typeof module !== 'undefined') {
