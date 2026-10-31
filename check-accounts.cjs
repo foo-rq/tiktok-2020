@@ -514,4 +514,79 @@ function harness(options = {}) {
   await sending;
   assert.equal(forgot.disabled, false);
   assert.match(forms.elements['account-status'].textContent, /Offline/);
+  forms.auth.resetPasswordForEmail = async () => {
+    throw new Error('Network failure');
+  };
+  await forgot.onclick();
+  assert.match(forms.elements['account-status'].textContent, /Network failure/);
+
+  forms.emit('PASSWORD_RECOVERY', 'viewer-a');
+  await forms.runTimers(0);
+  const reset = forms.elements,
+    passwordChange = deferred();
+  let changes = 0;
+  reset['new-password'].value = 'New-test-password1!';
+  forms.auth.updateUser = () => {
+    changes++;
+    return passwordChange.promise;
+  };
+  reset['reset-form'].valid = false;
+  await reset['reset-form'].onsubmit(event);
+  assert.equal(changes, 0);
+  reset['reset-form'].valid = true;
+  const changing = reset['reset-form'].onsubmit(event);
+  await reset['reset-form'].onsubmit(event);
+  assert.equal(changes, 1, 'Password submissions cannot run twice concurrently');
+  passwordChange.resolve({ error: new Error('Offline') });
+  await changing;
+  assert.match(reset['reset-status'].textContent, /Offline/);
+  assert.equal(reset['reset-form'].querySelector('[type="submit"]').disabled, false);
+  forms.auth.updateUser = async () => ({ error: null });
+  forms.auth.signOut = async () => ({ error: new Error('Offline') });
+  await reset['reset-form'].onsubmit(event);
+  assert.match(reset['reset-status'].textContent, /Password saved/);
+  assert.equal(
+    forms.navigations.length,
+    0,
+    'Do not claim the reset session ended when sign-out failed'
+  );
+  forms.auth.signOut = async () => ({ error: null });
+  reset['new-password'].value = 'Another-test-password1!';
+  await reset['reset-form'].onsubmit(event);
+  assert.equal(forms.navigations[0], 'https://app.example.invalid/');
+
+  const loading = harness({ loading: true });
+  loading.emit('PASSWORD_RECOVERY', 'viewer-a');
+  await loading.runTimers(0);
+  assert.equal(
+    Object.keys(loading.elements).length,
+    0,
+    'Recovery waits for the app scripts to finish loading'
+  );
+  loading.trigger('DOMContentLoaded');
+  assert(loading.elements['reset-form']);
+  let capturedRedirect;
+  const pages = harness({
+    guest: true,
+    href: 'https://foo-rq.github.io/tiktok-2020/?code=example',
+    auth: {
+      signUp: async (request) => {
+        capturedRedirect = request.options.emailRedirectTo;
+        return { data: { session: null }, error: null };
+      }
+    }
+  });
+  pages.api.emailForm();
+  pages.elements['display-name'].value = 'Viewer';
+  pages.elements['account-email'].value = 'viewer@example.invalid';
+  pages.elements['account-password'].value = 'Valid-pass1!';
+  await pages.elements['email-form'].onsubmit(event);
+  assert.equal(
+    capturedRedirect,
+    'https://foo-rq.github.io/tiktok-2020/',
+    'Confirmation returns to the project path'
+  );
+  console.log(
+    'Account validation, session isolation, save recovery, profile races and auth form checks passed.'
+  );
 })();
