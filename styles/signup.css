@@ -1,0 +1,276 @@
+.caption h2 {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.post-date {
+  font-size: 12px;
+  font-weight: 400;
+  white-space: nowrap;
+  opacity: 0.8;
+}
+
+/* Keep signup actions spaced apart with the same inherited type scale */
+.signup-methods {
+  display: grid;
+  gap: 12px;
+  margin: 24px 0;
+}
+
+.signup-method {
+  padding: 12px;
+  border: 1px solid var(--muted);
+  border-radius: 3px;
+  font-weight: 600;
+}
+
+.signup-method:disabled {
+  color: var(--muted);
+  background: var(--soft);
+  cursor: not-allowed;
+}
+
+:root {
+  --signup-separator: #dedede;
+  --signup-facebook: #3c579a;
+  --signup-twitter: #55acef;
+}
+
+.signup-sheet {
+  height: 480px;
+  max-height: 90dvh;
+}
+
+.signup-sheet .sheet-head {
+  height: 40px;
+  border: 0;
+  padding: 8px 16px;
+}
+
+.signup-sheet .sheet-head h2 {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: clip;
+  clip-path: inset(50%);
+}
+
+.signup-sheet .sheet-head #close {
+  margin-left: auto;
+}
+
+.signup-sheet #sheet-body {
+  padding: 4px 32px 0;
+  height: calc(100% - 40px);
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.signup-title {
+  font-size: 20px;
+  line-height: 1.25;
+  font-weight: 700;
+  text-align: center;
+  max-width: 260px;
+  margin: 0 auto 28px;
+}
+
+.signup-phone {
+  width: 100%;
+  min-height: 44px;
+  border-radius: 2px;
+  font-size: 16px;
+  font-weight: 600;
+  background: var(--pink);
+  color: var(--white);
+}
+
+.signup-phone:disabled {
+  font-size: 16px;
+  font-weight: 600;
+  background: var(--pink);
+  color: var(--white);
+  opacity: 1;
+  cursor: not-allowed;
+}
+
+.signup-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin: 28px 0 20px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.signup-divider:before,
+.signup-divider:after {
+  content: '';
+  height: 1px;
+  flex: 1;
+  background: var(--signup-separator);
+}
+
+.signup-socials {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+}
+
+/* Use equal button frames even when provider artwork has different proportions */
+.signup-social {
+  width: 48px;
+  height: 48px;
+  border: 1px solid var(--soft);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  padding: 12px;
+}
+
+.signup-social:disabled {
+  background: var(--white);
+  opacity: 1;
+  cursor: not-allowed;
+}
+
+.signup-social img {
+  width: 26px;
+  height: 26px;
+  display: block;
+}
+
+.signup-facebook:disabled {
+  background: var(--signup-facebook);
+  border-color: var(--signup-facebook);
+}
+
+.signup-twitter:disabled {
+  background: var(--signup-twitter);
+  border-color: var(--signup-twitter);
+}
+
+.signup-facebook img,
+.signup-twitter img {
+  filter: brightness(0) invert(1);
+}
+
+.signup-status {
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+  max-width: 240px;
+  margin: 28px auto 20px;
+  line-height: 1.5;
+}
+
+/* Keep the login switch at the bottom of signup rather than mixed into the provider list */
+.signup-footer {
+  width: calc(100% + 64px);
+  margin: auto -32px 0;
+  padding: 20px 12px;
+  background: var(--soft);
+  text-align: center;
+  font-size: 13px;
+  border-top: 1px solid var(--signup-separator);
+}
+
+.signup-switch {
+  color: var(--pink-ink);
+  padding: 0;
+  font-weight: 600;
+}
+
+.signup-facebook:disabled {
+  background: var(--white);
+  border: 0;
+}
+
+.signup-facebook img {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  filter: none;
+}
+
+.signup-twitter img {
+  filter: none;
+}
+
+.signup-sheet {
+  height: 420px;
+  border-radius: 0;
+}
+
+.signup-sheet .sheet-head {
+  height: 24px;
+  padding: 0;
+}
+
+.signup-sheet .sheet-head #close {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+}
+
+.signup-sheet #sheet-body {
+  height: calc(100% - 24px);
+}
+
+.signup-title {
+  margin-bottom: 24px;
+}
+
+.signup-divider {
+  margin: 26px 0 18px;
+}
+
+.signup-social {
+  padding: 0;
+}
+
+.signup-status {
+  margin-top: 26px;
+}
+
+.signup-footer {
+  padding: 16px 12px;
+}
+
+:root {
+  --signup-red: #ff2c55;
+}
+
+.signup-phone,
+.signup-phone:disabled,
+#signup {
+  background: var(--signup-red);
+}
+
+.signup-social {
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  flex: 0 0 48px;
+  border-width: 1px;
+}
+
+.signup-social img,
+.signup-facebook img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  border-radius: 0;
+  filter: none;
+}
+
+.signup-facebook:disabled {
+  background: var(--signup-facebook);
+  border: 1px solid var(--signup-facebook);
+}
+
