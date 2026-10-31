@@ -1,0 +1,279 @@
+/* Keep scrolling inside the feed so overlays and navigation stay in place */
+#feed {
+  height: calc(100% - 58px - env(safe-area-inset-bottom));
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+  scrollbar-width: none;
+  overscroll-behavior: contain;
+}
+
+#feed::-webkit-scrollbar {
+  display: none;
+}
+
+/* Each card needs its own positioning context for captions and action buttons */
+.video {
+  height: 100%;
+  position: relative;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  background: var(--black);
+  overflow: clip;
+}
+
+/* Fit the whole video inside the canvas instead of cropping its edges */
+.player {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: var(--black);
+  border: 0;
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* The bottom fade keeps white captions readable over bright footage */
+.video:after {
+  content: '';
+  position: absolute;
+  inset: 55% 0 0;
+  background: linear-gradient(var(--clear), var(--overlay));
+  pointer-events: none;
+}
+
+/* Keep the playback hit area separate from the action buttons above it */
+.tap-area {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+/* Centre the play or error state inside the video rather than the whole desktop */
+.start {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  line-height: 1.4;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--white);
+  white-space: nowrap;
+  font-size: 13px;
+  max-width: 100%;
+}
+
+.start svg {
+  width: 50px;
+  height: 58px;
+  fill: var(--white);
+  stroke: none;
+  opacity: 0.75;
+}
+
+/* Pausing should leave the last video frame visible */
+.pause-shield {
+  position: absolute;
+  inset: 0;
+  background: var(--black);
+  pointer-events: none;
+}
+
+.start[hidden],
+.pause-shield[hidden],
+.follow-marker[hidden] {
+  display: none;
+}
+
+/* Leave room for the action rail so long captions do not sit under the buttons */
+.caption {
+  position: absolute;
+  bottom: 20px;
+  left: 12px;
+  right: 70px;
+  z-index: 2;
+  text-shadow: 0 1px 4px var(--black);
+  pointer-events: none;
+}
+
+.caption h2 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 8px;
+  line-height: 1.3;
+}
+
+.post-details {
+  padding: 0;
+  pointer-events: auto;
+  text-align: left;
+  font-weight: 600;
+}
+
+.caption p {
+  font-size: 14px;
+  line-height: 1.4;
+  margin: 0 0 12px;
+}
+
+/* Long sound labels should truncate rather than run underneath the action rail */
+.sound {
+  display: block;
+  color: var(--white);
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  padding: 0;
+  pointer-events: auto;
+}
+
+.sound:before {
+  content: '♫';
+  margin-right: 8px;
+  font-size: 19px;
+}
+
+/* Give every video the same action spacing rather than positioning each button separately */
+.actions {
+  position: absolute;
+  right: 8px;
+  bottom: 16px;
+  z-index: 2;
+  display: grid;
+  gap: 20px;
+  text-shadow: 0 1px 3px var(--black);
+}
+
+.action {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 0;
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* Use the same icon box so different path shapes do not change the rail alignment */
+.action svg {
+  width: 34px;
+  height: 34px;
+  stroke-width: 1.4;
+  fill: var(--white);
+  stroke: var(--white);
+  filter: drop-shadow(0 1px 2px var(--shadow));
+}
+
+/* Change the heart colour without changing its size or position */
+.action.liked svg {
+  fill: var(--pink);
+  stroke: var(--pink);
+}
+
+/* Anchor the follow marker to the avatar rather than to the whole action rail */
+.creator-control {
+  position: relative;
+  margin-bottom: 4px;
+}
+
+.avatar {
+  width: 46px;
+  height: 46px;
+  border: 1.5px solid var(--white);
+  border-radius: 50%;
+  font-weight: 600;
+  font-size: 22px;
+  display: grid;
+  place-items: center;
+  background: var(--line);
+  padding: 0;
+}
+
+.follow-marker {
+  position: absolute;
+  bottom: -8px;
+  left: 14px;
+  background: var(--pink);
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 20px;
+  padding: 0;
+}
+
+/* Make the small follow marker easier to hit without making the visible circle bigger */
+.follow-marker:before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+}
+
+.avatar-0 {
+  background: var(--avatar-0);
+}
+
+.avatar-1 {
+  background: var(--avatar-1);
+}
+
+.avatar-2 {
+  background: var(--avatar-2);
+}
+
+.avatar-3 {
+  background: var(--avatar-3);
+}
+
+.avatar-4 {
+  background: var(--avatar-4);
+}
+
+.avatar-5 {
+  background: var(--avatar-5);
+}
+
+.avatar-6 {
+  background: var(--avatar-6);
+}
+
+.avatar-7 {
+  background: var(--avatar-7);
+}
+
+.avatar-8 {
+  background: var(--avatar-8);
+}
+
+.avatar-9 {
+  background: var(--avatar-9);
+}
+
+/* The spinning record uses a fixed frame so playback does not shift the controls */
+.record {
+  width: 44px;
+  height: 44px;
+  border: 9px solid var(--line);
+  border-radius: 50%;
+  background: var(--black);
+  display: grid;
+  place-items: center;
+  font-size: 20px;
+  font-weight: 400;
+}
+
+.record.playing {
+  animation: spin 5s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
