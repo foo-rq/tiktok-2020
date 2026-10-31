@@ -30,6 +30,7 @@ function harness(options = {}) {
     updates = [],
     notices = [],
     navigations = [];
+  const views = [];
   let timerId = 0,
     authChange,
     elements = {},
@@ -178,6 +179,7 @@ function harness(options = {}) {
     listPost() {},
     $: (selector) => elements[selector.slice(1)],
     openSheet(title, html) {
+      views.push({ title, html });
       const current = {};
       for (const match of html.matchAll(/id="([^"]+)"/g))
         current[match[1]] = {
@@ -202,6 +204,7 @@ function harness(options = {}) {
     auth,
     updates,
     notices,
+    views,
     navigations,
     get state() {
       return context.state;
@@ -481,6 +484,55 @@ function harness(options = {}) {
     await minimum.elements['email-form'].onsubmit(event);
   }
   assert.equal(signupRequests, 1, 'All character requirements are enforced');
+  // New signups should land on Me with a persistent reminder rather than a toast
+  const newSignup = harness({ guest: true });
+  newSignup.api.emailForm();
+  newSignup.elements['display-name'].value = 'Viewer';
+  newSignup.elements['account-email'].value = 'new@example.invalid';
+  newSignup.elements['account-password'].value = 'Test-password1!';
+  await newSignup.elements['email-form'].onsubmit(event);
+  assert.equal(newSignup.views.at(-1).title, 'Me');
+  assert(newSignup.views.at(-1).html.includes('Check your email to confirm your account'));
+  assert(newSignup.views.at(-1).html.includes('Check spam if you can&#39;t find it'));
+
+  // The email notice should not appear on an ordinary guest profile visit
+  newSignup.api.profile();
+  assert(!newSignup.views.at(-1).html.includes('signup-email-note'));
+
+  // A confirmed duplicate gets a message without navigating or promising mail
+  const duplicate = harness({ guest: true, auth: {
+    signUp: async () => ({ data: { session: null, user: { identities: [] } }, error: null })
+  } });
+  duplicate.api.emailForm();
+  duplicate.elements['display-name'].value = 'Viewer';
+  duplicate.elements['account-email'].value = 'existing@example.invalid';
+  duplicate.elements['account-password'].value = 'Test-password1!';
+  await duplicate.elements['email-form'].onsubmit(event);
+  assert.equal(duplicate.views.at(-1).title, 'Sign up');
+  assert.equal(duplicate.elements['account-status'].textContent, 'An account already exists with this email');
+
+  // Some provider settings report the same duplicate as an explicit error
+  duplicate.auth.signUp = async () => ({ data: {}, error: { code: 'user_already_exists' } });
+  duplicate.api.emailForm();
+  duplicate.elements['display-name'].value = 'Viewer';
+  duplicate.elements['account-email'].value = 'existing@example.invalid';
+  duplicate.elements['account-password'].value = 'Test-password1!';
+  await duplicate.elements['email-form'].onsubmit(event);
+  assert.equal(duplicate.views.at(-1).title, 'Sign up');
+  assert.equal(duplicate.elements['account-status'].textContent, 'An account already exists with this email');
+
+  // Delivery errors belong on the form and must not show the success reminder
+  const mailFailure = harness({ guest: true, auth: {
+    signUp: async () => ({ data: {}, error: new Error('Error sending confirmation email') })
+  } });
+  mailFailure.api.emailForm();
+  mailFailure.elements['display-name'].value = 'Viewer';
+  mailFailure.elements['account-email'].value = 'new@example.invalid';
+  mailFailure.elements['account-password'].value = 'Test-password1!';
+  await mailFailure.elements['email-form'].onsubmit(event);
+  assert.equal(mailFailure.views.at(-1).title, 'Sign up');
+  assert.match(mailFailure.elements['account-status'].textContent, /Error sending/);
+
   const signup = deferred(),
     forms = harness({ guest: true, auth: { signUp: () => signup.promise } });
   forms.api.emailForm();
@@ -494,6 +546,7 @@ function harness(options = {}) {
   signup.resolve({ data: { session: null }, error: null });
   await submission;
   assert.equal(old['account-password'].value, '');
+  assert.equal(forms.views.at(-1).title, 'Log in', 'A late signup response must not reopen Me');
   assert.equal(
     forms.elements['account-password'].value,
     'keep-current-input',

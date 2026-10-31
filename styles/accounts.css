@@ -47,3 +47,23 @@
   background: var(--signup-red);
 }
 
+
+/* Keep the email reminder readable without competing with the signup action */
+.signup-email-note {
+  max-width: 280px;
+  margin: 16px auto 24px;
+  line-height: 1.4;
+}
+
+.viewer-guest .signup-email-note p {
+  margin: 0 0 4px;
+  color: var(--ink);
+  font-size: 14px;
+}
+
+/* The spam hint is secondary but still needs enough contrast in both themes */
+.signup-email-note small {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}

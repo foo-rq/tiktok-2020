@@ -232,13 +232,17 @@ const Accounts = (() => {
     return queue;
   }
 
-  function profile() {
+  function profile(showEmailNotice = false) {
 
     // Keep signup inside Me and remember how to return here
     if (!user) {
       Panels.page(
         'Me',
-        '<section class="viewer-guest"><div class="guest-portrait" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 22a8 8 0 0 1 16 0"/></svg></div><h3>Sign up for an account</h3><p>Save your likes and follow creators.</p><button class="primary" id="signup">Sign up</button><p>Already have an account? <button class="text-button" id="login">Log in</button></p></section>',
+        '<section class="viewer-guest"><div class="guest-portrait" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 22a8 8 0 0 1 16 0"/></svg></div><h3>Sign up for an account</h3><p>Save your likes and follow creators.</p>' +
+
+        // Keep this on Me so the reminder stays visible after the form closes
+        (showEmailNotice === true ? '<div class="signup-email-note" role="status"><p>Check your email to confirm your account</p><small>Check spam if you can&#39;t find it</small></div>' : '') +
+        '<button class="primary" id="signup">Sign up</button><p>Already have an account? <button class="text-button" id="login">Log in</button></p></section>',
         { tab: 'me', reopen: profile }
       );
       $('#signup').onclick = () => Panels.signup(false, profile);
@@ -326,7 +330,7 @@ const Accounts = (() => {
         (login ? 1 : 8) +
         '" maxlength="128">' +
         (!login
-          ? '<p class="panel-note">Use at least 8 characters, with uppercase, lowercase, a number and a symbol. Verify your email before logging in.</p>'
+          ? '<p class="panel-note">Use at least 8 characters, with uppercase, lowercase, a number and a symbol.</p>'
           : '') +
         '<button class="account-submit" type="submit">' +
         (login ? 'Log in' : 'Sign up') +
@@ -391,15 +395,28 @@ const Accounts = (() => {
           reload();
           return;
         }
-        status.textContent =
-          'Check your email to confirm your account, then return here to log in.';
+        // A late response shouldn't pull someone away from a different page
+        if ($('#email-form') !== form) return;
+
+        // Confirmed accounts can come back without identities instead of an error
+        // Stay here with the message rather than suggesting another email was sent
+        if (!login && result.data.user?.identities?.length === 0) {
+          status.textContent = 'An account already exists with this email';
+          return;
+        }
+
+        // A new signup returns to Me with the email reminder kept on that page
+        profile(true);
       } catch (error) {
         status.textContent =
 
-          // This provider error means delivery is restricted rather than a bad password
-          error.code === 'email_address_not_authorized'
-            ? 'Email delivery is in private testing. Use the email on your project account for now.'
-            : error.message || 'Account service unavailable. Try again.';
+          // Duplicate signup can also arrive as an error rather than an empty identity list
+          // Keep delivery errors on the form so they aren't mistaken for success
+          error.code === 'user_already_exists' || error.code === 'email_exists'
+            ? 'An account already exists with this email'
+            : error.code === 'email_address_not_authorized'
+              ? 'Email delivery is in private testing. Use the email on your project account for now.'
+              : error.message || 'Account service unavailable. Try again.';
       } finally {
 
         // Leave the form usable after a rejected request
