@@ -1,0 +1,213 @@
+/* The same sheet handles short overlays and full pages with later overrides */
+dialog {
+  border: 0;
+  padding: 0;
+  color: var(--ink);
+  background: var(--panel);
+  width: 420px;
+  max-width: 100%;
+  max-height: 76dvh;
+  margin: 0;
+  position: fixed;
+  left: calc(50% - 50px);
+  top: auto;
+  bottom: 0;
+  border-radius: 10px 10px 0 0;
+  overflow-y: auto;
+}
+
+dialog::backdrop {
+  background: var(--shade);
+}
+
+/* Keep the heading and close action available while a long sheet scrolls */
+.sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--soft);
+  position: sticky;
+  top: 0;
+  background: var(--panel);
+  z-index: 1;
+}
+
+.sheet-head h2 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.sheet-head button {
+  font-size: 28px;
+  padding: 0 4px;
+  min-width: 32px;
+  min-height: 32px;
+}
+
+#sheet-body {
+  padding: 20px 16px 28px;
+  line-height: 1.5;
+  font-size: 14px;
+  min-height: 280px;
+}
+
+/* Give empty states their own space rather than mixing them into the comment list */
+.empty-comments {
+  text-align: center;
+  padding: 32px 12px;
+}
+
+.empty-comments h3 {
+  font-size: 18px;
+  margin: 0 0 8px;
+}
+
+.empty-comments p {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.text-button {
+  color: var(--pink-ink);
+  font-size: 13px;
+  padding: 12px;
+}
+
+/* Keep the avatar separate so wrapped comment text cannot squeeze it */
+.comment {
+  display: flex;
+  gap: 12px;
+  padding: 12px 0;
+}
+
+.bubble-avatar {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--soft);
+  display: grid;
+  place-items: center;
+}
+
+/* Long unbroken comment text should wrap instead of widening the panel */
+.comment p {
+  margin: 0;
+}
+
+.comment strong {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.comment small {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.notice {
+  background: var(--soft);
+  padding: 12px;
+  font-size: 12px;
+  border-radius: 4px;
+}
+
+.list-button {
+  width: 100%;
+  display: flex;
+  text-align: left;
+  padding: 16px 0;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--soft);
+  font-size: 14px;
+}
+
+.list-button span {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.search-input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--muted);
+  background: var(--soft);
+  border-radius: 4px;
+  color: var(--ink);
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+/* Use a short overlay message without moving the page content */
+#toast {
+  position: fixed;
+  top: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--white);
+  color: var(--ink);
+  padding: 12px 16px;
+  border-radius: 4px;
+  font-size: 13px;
+  z-index: 9;
+  display: none;
+  max-width: 90%;
+  text-align: center;
+}
+
+noscript {
+  position: fixed;
+  z-index: 10;
+  background: var(--black);
+  padding: 20px;
+}
+
+#sheet-body a {
+  color: var(--pink-ink);
+}
+
+@media (hover: hover) {
+  button:hover {
+    opacity: 0.85;
+  }
+}
+
+/* Hide the desktop rail on small windows and let the player use the available width */
+@media (max-width: 760px) {
+  .desktop {
+    display: none;
+  }
+
+  .phone {
+    width: 100%;
+    max-width: 480px;
+    max-height: none;
+  }
+
+  dialog {
+    left: 50%;
+    transform: translateX(-50%);
+    width: 480px;
+  }
+}
+
+/* Only add the frame borders once the player is separated from the browser edges */
+@media (min-width: 761px) {
+  .phone {
+    border-left: 1px solid var(--line);
+    border-right: 1px solid var(--line);
+  }
+}
+
+/* Respect reduced motion for decorative movement and smooth scrolling */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
