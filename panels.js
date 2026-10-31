@@ -462,4 +462,67 @@
     empty.append(mark,node('h3','','No messages'),node('p','','Messaging is unavailable.'));body.append(empty);
   }
 
+  function details(post) {
+    openSheet('Video details', '');
+    const body = $('#sheet-body');
+    body.append(node('h3', '', '@' + post.creator), node('p', '', post.caption));
+
+    // Only render a date once it matches the format our catalog expects
+    if (/^2020-\d{2}-\d{2}$/.test(post.date || '')) {
+      const date = node('time', 'panel-post-date', post.date.replace(/-0/g, '-'));
+      date.dateTime = post.date;
+      body.append(date, node('p', 'panel-note', 'Date decoded from the original video ID, shown in UTC.'));
+    }
+    const original = node('a', 'panel-original', 'Open original video');
+    original.href = originalUrl(post);
+    original.target = '_blank';
+    original.rel = 'noopener noreferrer';
+    body.append(original);
+  }
+
+  function signup(login = false, back) {
+    const body=authPage(login ? 'Log in' : 'Sign up','',back);
+    $('#sheet').classList.add('signup-page');
+    const title = node('h3', 'signup-title', login ? 'Log in to TikTok 2020' : 'Sign up for TikTok 2020');
+    const phone = node('button', 'signup-phone', login ? 'Log in with email' : 'Sign up with email');
+
+    // The red signup action uses email since phone signup isn't connected
+    phone.onclick = () => Accounts.emailForm(login,back);
+    phone.setAttribute('aria-describedby', 'signup-status');
+    const divider = node('div', 'signup-divider', 'OR');
+    const methods = node('div', 'signup-socials');
+
+    // These stay disabled until their providers are actually connected
+    ['facebook', 'google', 'twitter'].forEach(provider => {
+      const button = node('button', 'signup-social signup-' + provider);
+      const image = node('img');
+      image.src = 'assets/' + provider + '.svg';
+      image.alt = '';
+      button.append(image);
+      button.disabled = true;
+      button.setAttribute('aria-label', 'Continue with ' + provider[0].toUpperCase() + provider.slice(1));
+      button.setAttribute('aria-describedby', 'signup-status');
+      methods.append(button);
+    });
+    const status = node('p', 'signup-status', 'Confirm your email to finish signing up. Other sign-in methods are unavailable.');
+    status.id = 'signup-status';
+    const footer = node('div', 'signup-footer');
+    const switchMode = node('button', 'signup-switch', login ? 'Sign up' : 'Log in');
+    switchMode.onclick = () => signup(!login,back);
+    footer.append(document.createTextNode(login ? 'Don’t have an account? ' : 'Already have an account? '), switchMode);
+    body.append(title, phone, divider, methods, status, footer);
+  }
+  root.Panels = { discover, share, sound, details, signup, page, authPage, creator, thumbnail, renderPosts, inbox };
+  if (typeof module !== 'undefined') {
+    module.exports = { matches, soundPosts, soundInfo, hashtags, searchHistory, rememberSearch };
+    if (require.main === module) {
+      const assert = require('node:assert/strict');
+      const sample = [{ id: '1', creator: 'viewer', name: 'Viewer', caption: 'Food #pancake', tags: ['food'], sound: 'Original TikTok audio' }, { id: '2', creator: 'other', name: 'Other', caption: 'Dance', tags: ['dance'], sound: 'Original TikTok audio' }];
+      assert.equal(matches(sample, '#pancake', 'Hashtags').length, 1);
+      assert.equal(matches(sample, 'VIEWER', 'Users').length, 1);
+      assert.equal(matches(sample, 'viewer', 'Videos').length, 0);
+      assert.equal(soundPosts(sample, sample[0]).length, 1);
+      console.log('Panel search and unknown-sound checks passed.');
+    }
+  }
 })(typeof window === 'undefined' ? globalThis : window);
