@@ -1,0 +1,49 @@
+.account-form {
+  display: grid;
+  gap: 8px;
+}
+
+.account-form label {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.account-form input {
+  width: 100%;
+  height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--muted);
+  border-radius: 3px;
+  background: var(--white);
+  color: var(--ink);
+  margin-bottom: 12px;
+}
+
+.account-submit {
+  min-height: 44px;
+  background: var(--pink-ink);
+  color: var(--white);
+  font-weight: 600;
+  border-radius: 3px;
+}
+
+.account-submit:disabled {
+  background: var(--soft);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.account-form [role='status'] {
+  font-size: 13px;
+  min-height: 24px;
+  line-height: 1.5;
+}
+
+.account-form .panel-note {
+  margin: 0 0 12px;
+}
+
+.account-submit {
+  background: var(--signup-red);
+}
+

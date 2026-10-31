@@ -1,0 +1,128 @@
+/* Keep the light theme defaults together so shared surfaces use the same palette */
+:root {
+  --bg: #e7e5e2;
+  --desktop-ink: #161823;
+  --black: #000;
+  --white: #fff;
+  --muted: #666668;
+  --line: #303030;
+  --pink: #fe2c55;
+  --pink-ink: #bb1235;
+  --cyan: #20d5ec;
+  --panel: #fff;
+  --ink: #161823;
+  --soft: #f1f1f2;
+  --overlay: rgba(0, 0, 0, 0.68);
+  --shade: rgba(0, 0, 0, 0.4);
+  --header-shade: rgba(0, 0, 0, 0.5);
+  --clear: rgba(0, 0, 0, 0);
+  --shadow: rgba(0, 0, 0, 0.45);
+  --font: 'Proxima Nova', 'Archive UI', Arial, Helvetica, sans-serif;
+  --face-name: 'Archive UI';
+  --avatar-0: #527b85;
+  --avatar-1: #967440;
+  --avatar-2: #a3636d;
+  --avatar-3: #786c87;
+  --avatar-4: #365a88;
+  --avatar-5: #697456;
+  --avatar-6: #86654b;
+  --avatar-7: #547c74;
+  --avatar-8: #785347;
+  --avatar-9: #846d4c;
+}
+
+/* Use the bundled font without making visitors install anything */
+@font-face {
+  font-family: 'Archive UI';
+  src: url('assets/metropolis-400.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Archive UI';
+  src: url('assets/metropolis-600.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Archive UI';
+  src: url('assets/metropolis-700.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+
+/* The desktop background can change theme while the video canvas stays black */
+body {
+  margin: 0;
+  overflow-x: clip;
+  background: var(--bg);
+  color: var(--white);
+  font-family: var(--font);
+  font-synthesis: none;
+}
+
+button,
+a,
+input {
+  font: inherit;
+}
+
+button {
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+a:focus-visible,
+
+/* Keep keyboard focus visible without bringing back the default blue input outline */
+input:focus-visible {
+  outline: 3px solid var(--cyan);
+  outline-offset: 3px;
+}
+
+button:active {
+  opacity: 0.7;
+}
+
+/* Disabled actions still need to read as controls even though they cannot be used */
+button:disabled {
+  color: var(--muted);
+  background: var(--soft);
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Let icons inherit the surrounding colour so light and dark themes stay consistent */
+svg {
+  width: 26px;
+  height: 26px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+h1,
+h2,
+h3 {
+  min-width: 0;
+  overflow-wrap: break-word;
+  text-wrap: balance;
+}
+
