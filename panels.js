@@ -164,4 +164,302 @@
     append();
   }
 
+  function discover(saved = {}) {
+    const body = page('Discover', '', {tab:'discover',reopen:()=>discover({query:input.value,category:selected})});
+    $('#sheet').classList.add('discover-page');
+    body.classList.add('panel-discover');
+    const label = node('label', 'panel-search-label', 'Search');
+    label.htmlFor = 'collection-search';
+    const input = node('input', 'search-input');
+    input.id = 'collection-search';
+    input.type = 'search';
+    input.placeholder = 'Search';
+
+    // Coming back from a result should restore what was typed
+    input.value = saved.query || '';
+    let searching=!!saved.query;
+
+    // Use our recent searches rather than unrelated browser form suggestions
+    input.autocomplete = 'off';
+    input.maxLength = 80;
+    const searchBox = node('div', 'panel-search-box');
+    const clear = node('button', 'panel-search-clear');
+    clear.type = 'button';
+    clear.setAttribute('aria-label', 'Clear search');
+    clear.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"/></svg>';
+    clear.hidden = true;
+
+    // Keep focus in search after clearing so typing can continue straight away
+    clear.onclick = () => { input.value = ''; render(); input.focus(); };
+    const searchIcon=node('span','search-field-icon');searchIcon.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/></svg>';
+    searchBox.append(searchIcon,input, clear);
+    const tabs = node('div', 'panel-search-tabs');
+    tabs.setAttribute('role', 'tablist');
+    tabs.setAttribute('aria-label', 'Search categories');
+    const results = node('div', 'panel-search-results');
+    results.id = 'collection-results';
+    results.setAttribute('role', 'tabpanel');
+
+    // Old saved state might name a category that no longer exists
+    let selected = categories.includes(saved.category) ? saved.category : 'Top';
+    const tabButtons = categories.map(category => {
+      const button = node('button', 'panel-search-tab', category);
+      button.id = 'search-tab-' + category.toLowerCase();
+      button.setAttribute('role', 'tab');
+      button.setAttribute('aria-controls', results.id);
+      button.onclick = () => { selected = category; render(); };
+
+      // Arrow keys should move focus with the selected tab and wrap at the ends
+      button.onkeydown = event => {
+        const direction = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
+        if (!direction) return;
+        event.preventDefault();
+        selected = categories[(categories.indexOf(selected) + direction + categories.length) % categories.length];
+        render();
+        tabButtons[categories.indexOf(selected)].focus();
+      };
+      tabs.append(button);
+      return button;
+    });
+    $('#sheet .sheet-head').append(label, searchBox);
+    $('#sheet-body').insertBefore(tabs,body);
+    body.append(results);
+    $('#close').onclick = () => { if(searching||input.value){input.value='';searching=false;input.blur();render();}else $('#sheet').close(); };
+    input.addEventListener('focus',()=>{searching=true;render();});
+
+    // Save a completed query rather than every partial word typed
+    function recordQuery(){if(!rememberSearch(input.value))toast('Search history could not be saved.');}
+    input.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();recordQuery();render();}});
+    results.addEventListener('click',event=>{if(event.target.closest('.list-button,.panel-user,.panel-sound-result'))recordQuery();},true);
+
+    // Recent searches stay on this device rather than being shared account history
+    function renderHistory(){
+      const history=searchHistory();
+      if(!history.length)return;
+      const group=node('section','panel-section'),header=node('div','panel-history-head');
+      const clearHistory=node('button','text-button','Clear history');
+      clearHistory.onclick=()=>{try{localStorage.removeItem(historyKey);render();}catch{toast('Search history could not be cleared.');}};
+      header.append(node('h3','panel-section-title','Recent searches'),clearHistory);group.append(header);
+      history.forEach(term=>{const button=node('button','panel-history-item',term);button.onclick=()=>{input.value=term;rememberSearch(term);render();};group.append(button);});
+      results.append(group);
+    }
+
+    // Match the hashtag text even when the user leaves out the hash
+    function renderTags(posts, container, query) {
+      const tags = [...new Set(posts.flatMap(hashtags))].filter(tag => normalize(tag).includes(normalize(query).replace(/^#/, '')));
+      if (!tags.length) container.append(node('p', 'panel-empty', 'No hashtags found.'));
+      tags.slice(0,60).forEach(tag => {
+        const button = node('button', 'panel-hashtag');
+        button.append(hashtag('panel-hashtag-icon'), node('span', '', tag));
+        button.onclick = () => { input.value = '#' + tag; selected = 'Videos'; render(); };
+        container.append(button);
+      });
+    }
+
+    function renderUsers(posts, container) {
+
+      // A creator can have lots of videos but should appear only once in Users
+      const creators = [...new Map(posts.map(post => [post.creator, post])).values()];
+      creators.slice(0,50).forEach(post => {
+        const button = node('button', 'panel-user');
+        const avatar = node('span', 'panel-user-avatar', post.initial || post.creator.slice(0, 1));
+        avatar.setAttribute('aria-hidden', 'true');
+        const text = node('span', 'panel-user-text');
+        text.append(node('strong', '', post.name || post.creator), node('small', '', '@' + post.creator));
+        button.append(avatar, text);
+        button.onclick = () => creator(post, () => discover({query:input.value,category:selected}));
+        container.append(button);
+      });
+    }
+
+    // Leave unnamed audio out since unrelated videos can use the same label
+    function renderSounds(posts, container) {
+
+      // Use 1 representative video for each named sound result
+      const sounds = [...new Map(posts.filter(post => !unnamedSound(post.sound)).map(post => [post.sound, post])).values()];
+      if (!sounds.length) container.append(node('p', 'panel-empty', 'No named sounds found.'));
+      sounds.slice(0,50).forEach(post => {
+        const button = node('button', 'panel-sound-result');
+        button.append(node('span', 'panel-sound-mark', '♫'), node('span', '', post.sound));
+        button.onclick = () => sound(post, () => discover({query:input.value,category:selected}));
+        container.append(button);
+      });
+    }
+
+    // These groups describe our collection rather than live trend statistics
+    function renderTrends() {
+      const terms = ['dance','comedy','food','animals','creative'];
+      const groups = terms.map(term => ({term, posts:matches(POSTS,term,'Hashtags')})).filter(group => group.posts.length);
+
+      // Fill extra groups from featured videos without calling generic fyp tags trends
+      const others = [...new Set(POSTS.filter(post=>post.featured).flatMap(hashtags))].filter(tag => !['fyp','foryou','everyday','music'].includes(tag));
+      for(const term of others){if(groups.length>=10)break;const posts=matches(POSTS,term,'Hashtags');if(posts.length>=3&&!groups.some(group=>normalize(group.term)===normalize(term)))groups.push({term,posts});}
+      groups.forEach(({term,posts}) => {
+        posts.sort((a,b)=>Number(!!b.featured)-Number(!!a.featured));
+        const group=node('section','discover-trend'),heading=node('button','trend-heading');
+        const arrow=node('span','trend-chevron');arrow.setAttribute('aria-hidden','true');arrow.innerHTML='<svg viewBox="0 0 20 20"><path d="m7.5 5 5 5-5 5"/></svg>';
+        heading.append(hashtag('trend-hash'),node('span','trend-title',term),node('small','trend-count',posts.length+' in collection'),arrow);
+        heading.onclick=()=>{input.value='#'+term;selected='Videos';render();};
+        const strip=node('div','trend-videos');
+        posts.slice(0,6).forEach(post=>listPost(post,strip));
+        group.append(heading,strip);results.append(group);
+      });
+    }
+
+    // Rebuild results from the input and selected tab so clearing search resets them too
+    function render() {
+      const query = input.value.trim();
+      clear.hidden = !input.value;
+      $('#sheet').classList.toggle('searching', searching||!!query);
+      results.replaceChildren();
+
+      // Category tabs aren't useful until there is something to search for
+      tabs.hidden = !query;
+      tabButtons.forEach((button, index) => {
+        const active = categories[index] === selected;
+        button.setAttribute('aria-selected', String(active));
+        button.tabIndex = active ? 0 : -1;
+      });
+      results.setAttribute('aria-labelledby', 'search-tab-' + selected.toLowerCase());
+      if (!query) {
+
+        // Empty focused search shows history while the idle page shows collections
+        if(searching)renderHistory();else renderTrends();
+        return;
+      }
+      const found = matches(POSTS, query, selected);
+      if (!found.length) {
+        results.append(node('p', 'panel-empty', 'No results in this collection.'));
+      } else if (selected === 'Users') renderUsers(found, results);
+      else if (selected === 'Sounds') renderSounds(found, results);
+      else if (selected === 'Hashtags') renderTags(found, results, query);
+      else if (selected === 'Videos') renderPosts(found, results);
+      else {
+        const users = matches(POSTS, query, 'Users');
+        if (users.length) renderUsers(users, section(results, 'Users'));
+        renderPosts(found, section(results, 'Videos'));
+      }
+    }
+    input.addEventListener('input', render);
+    render();
+  }
+
+  const actionPaths = {
+    link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
+    share: '<path d="M12 16V2m-5 5 5-5 5 5M5 11H3v10h18V11h-2"/>',
+    open: '<path d="M14 3h7v7m0-7L10 14M10 4H3v17h17v-7"/>'
+  };
+
+  function actionIcon(type) {
+    const element = node('span', 'panel-share-icon');
+    element.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${actionPaths[type]}</svg>`;
+    return element;
+  }
+
+  // Share the original video URL while keeping the archive video playing
+  function share(post) {
+    openSheet('Share to', '', true);
+    const body = $('#sheet-body');
+    const grid = node('div', 'panel-share-grid');
+    const url = originalUrl(post);
+    const copy = node('button', 'panel-share-action');
+    copy.append(actionIcon('link'), node('span', '', 'Copy link'));
+    copy.onclick = async () => {
+      try { await navigator.clipboard.writeText(url); toast('Link copied'); }
+      catch {
+
+        // The user might close the sheet while clipboard permission is pending
+        if (!grid.isConnected) return;
+
+        // Let the user copy manually when the clipboard API is unavailable
+        const field = node('input', 'search-input');
+        field.value = url;
+        field.readOnly = true;
+        field.setAttribute('aria-label', 'Original video link');
+        body.append(field);
+        field.focus();
+        field.select();
+        toast('Copy the selected link.');
+      }
+    };
+    grid.append(copy);
+
+    // Only show the native share action when the browser supports it
+    if (navigator.share) {
+      const native = node('button', 'panel-share-action');
+      native.append(actionIcon('share'), node('span', '', 'More'));
+      native.onclick = async () => {
+        try { await navigator.share({ title: '@' + post.creator, url }); }
+
+        // Closing the native share menu is normal so don't toast an error for that
+        catch (error) { if (error.name !== 'AbortError') toast('Sharing is unavailable in this browser.'); }
+      };
+      grid.append(native);
+    }
+    const original = node('a', 'panel-share-action');
+    original.href = url;
+    original.target = '_blank';
+
+    // Keep the external page from getting access to this tab
+    original.rel = 'noopener noreferrer';
+    original.append(actionIcon('open'), node('span', '', 'Watch on TikTok'));
+    grid.append(original);
+    body.append(grid);
+  }
+
+  function creator(post, back) {
+    const body=page(post.name || post.creator, '', {back,reopen:()=>creator(post,back)});
+    const header=node('section','creator-header'),avatar=node('div','profile-portrait',post.initial || post.creator.slice(0,1));
+    avatar.setAttribute('aria-hidden','true');
+    header.append(avatar,node('h3','profile-handle','@'+post.creator));
+    const stats=node('div','profile-stats');
+
+    // Don't substitute current counts for historical counts we haven't archived
+    for(const label of ['Following','Followers','Likes']){const stat=node('div');stat.append(node('strong','','—'),node('span','',label));stats.append(stat);}
+    const follow=node('button','profile-follow');follow.id='creator-follow';
+    const refresh=()=>{follow.textContent=state.following.includes(post.creator)?'Following':'Follow';follow.classList.toggle('is-following',state.following.includes(post.creator));};refresh();
+
+    // Following belongs to an account so guests need signup first
+    follow.onclick=()=>{if(!Accounts.signedIn){signup(false,()=>creator(post,back));return;}state.following=state.following.includes(post.creator)?state.following.filter(id=>id!==post.creator):[...state.following,post.creator];save();refreshButtons();refresh();};
+    header.append(stats,follow,node('p','profile-note','Counts unavailable'));
+    body.append(header);
+    const tabs=node('div','profile-grid-tabs');tabs.innerHTML='<span class="active" aria-label="Videos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h4v4H3zM10 3h4v4h-4zM17 3h4v4h-4zM3 10h4v4H3zM10 10h4v4h-4zM17 10h4v4h-4zM3 17h4v4H3zM10 17h4v4h-4zM17 17h4v4h-4z"/></svg></span>';
+    body.append(tabs);renderPosts(POSTS.filter(item=>item.creator===post.creator),body);
+  }
+
+  function sound(post, back) {
+    const body = page('Sound', '', {back,reopen:()=>sound(post,back)});
+    const heading = node('div', 'panel-sound-heading');
+    const cover = node('span', 'panel-sound-cover');
+    cover.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 17V5l11-2v12M9 9l11-2"/><ellipse cx="6" cy="17" rx="3" ry="2"/><ellipse cx="17" cy="15" rx="3" ry="2"/></svg>';
+    const title = node('div');
+    const info=soundInfo(post);
+    title.append(node('h3','',info.title));
+    if(info.artist)title.append(node('p','sound-creator',info.artist));
+
+    // Only show videos we can associate with this sound label
+    const related=soundPosts(POSTS,post);
+    title.append(node('p','panel-note',related.length+(related.length===1?' video in collection':' videos in collection')));
+    heading.append(cover, title);
+    body.append(heading);
+    renderPosts(related,body);
+    const create = node('button', 'primary panel-use-sound', 'Use this sound');
+
+    // Keep the old layout without pretending video creation works
+    create.disabled = true;
+    create.setAttribute('aria-describedby', 'sound-disabled-reason');
+    const note = node('p', 'panel-note sound-disabled-note', 'Video creation is disabled.');
+    note.id = 'sound-disabled-reason';
+    const bar=node('div','sound-use-bar');bar.append(create,note);
+    $('#sheet-body').insertBefore(bar,$('#sheet .page-nav'));
+  }
+
+  function inbox(back) {
+    const body=page('Inbox','',{tab:'inbox',back,reopen:()=>inbox(back)});
+    const empty=node('div','inbox-empty');
+    const mark=node('span','inbox-mark');mark.setAttribute('aria-hidden','true');
+    mark.innerHTML='<svg viewBox="0 0 24 24"><path d="M3 3h18v15h-6l-3 4-3-4H3zM8 10h8"/></svg>';
+    empty.append(mark,node('h3','','No messages'),node('p','','Messaging is unavailable.'));body.append(empty);
+  }
+
 })(typeof window === 'undefined' ? globalThis : window);
