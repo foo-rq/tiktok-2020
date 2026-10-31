@@ -266,4 +266,12 @@ context.bindPlayer(other);
   );
   assert(styles.length > 1, 'The page should load the split stylesheets');
   const css = styles.map((path) => fs.readFileSync(path, 'utf8')).join('\n');
-})();
+  assert(/object-fit\s*:\s*contain/.test(css));
+  assert(!/inset\s*:\s*-64px/.test(css));
+  console.log(
+    'Direct playback, pause races, mute, looping, comments, visibility, release, denial and retry passed.'
+  );
+})().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
