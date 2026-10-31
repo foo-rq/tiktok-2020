@@ -67,6 +67,13 @@ function harness(options = {}) {
   };
   const client = {
     auth,
+    async rpc(name, args) {
+      assert.equal(name, 'username_available');
+      assert.equal(typeof args.p_name, 'string');
+      return options.usernameCheck
+        ? options.usernameCheck(args.p_name)
+        : { data: true, error: null };
+    },
     from(table) {
       assert.equal(table, 'viewer_profiles');
       let operation = 'read',
@@ -185,6 +192,7 @@ function harness(options = {}) {
         current[match[1]] = {
           value: '',
           textContent: '',
+          dataset: {},
           disabled: false,
           valid: true,
           reportValidity() {
@@ -237,7 +245,6 @@ function harness(options = {}) {
 }
 
 (async () => {
-
   // Start with messy guest data to check unknown IDs and extreme scores
   const guest = harness({ guest: true });
   const cleaned = guest.api.clean({
@@ -492,39 +499,128 @@ function harness(options = {}) {
   newSignup.elements['account-password'].value = 'Test-password1!';
   await newSignup.elements['email-form'].onsubmit(event);
   assert.equal(newSignup.views.at(-1).title, 'Me');
-  assert(newSignup.views.at(-1).html.includes('Check your email to confirm your account'));
+  assert(newSignup.views.at(-1).html.includes('Please check your email.'));
   assert(newSignup.views.at(-1).html.includes('Check spam if you can&#39;t find it'));
 
   // The email notice should not appear on an ordinary guest profile visit
   newSignup.api.profile();
   assert(!newSignup.views.at(-1).html.includes('signup-email-note'));
 
+  // A taken name stops before signup so no account or email is created
+  let takenRequests = 0;
+  const taken = harness({
+    guest: true,
+    usernameCheck: async () => ({ data: false, error: null }),
+    auth: {
+      signUp: async () => {
+        takenRequests++;
+        return { data: {}, error: null };
+      }
+    }
+  });
+  taken.api.emailForm();
+  taken.elements['display-name'].value = 'Taken';
+  taken.elements['account-email'].value = 'fresh@example.invalid';
+  taken.elements['account-password'].value = 'Test-password1!';
+  await taken.elements['email-form'].onsubmit(event);
+  assert.equal(takenRequests, 0);
+  assert.equal(taken.elements['account-status'].textContent, 'Username already taken');
+  assert.equal(taken.elements['account-status'].dataset.error, 'true');
+  assert.equal(taken.views.at(-1).title, 'Sign up');
+
+  // A failed name lookup must not continue with an unchecked signup
+  let uncheckedRequests = 0;
+  const nameOffline = harness({
+    guest: true,
+    usernameCheck: async () => ({
+      data: null,
+      error: new Error('Could not check username')
+    }),
+    auth: {
+      signUp: async () => {
+        uncheckedRequests++;
+        return { data: {}, error: null };
+      }
+    }
+  });
+  nameOffline.api.emailForm();
+  nameOffline.elements['display-name'].value = 'Fresh';
+  nameOffline.elements['account-email'].value = 'fresh@example.invalid';
+  nameOffline.elements['account-password'].value = 'Test-password1!';
+  await nameOffline.elements['email-form'].onsubmit(event);
+  assert.equal(uncheckedRequests, 0);
+  assert.equal(nameOffline.elements['account-status'].dataset.error, 'true');
+  assert.equal(nameOffline.views.at(-1).title, 'Sign up');
+
+  // A competing signup can win between the precheck and the actual insert
+  let nameChecks = 0;
+  const nameRace = harness({
+    guest: true,
+    usernameCheck: async () => ({ data: ++nameChecks === 1, error: null }),
+    auth: {
+      signUp: async () => ({
+        data: {},
+        error: { message: 'Database error saving new user' }
+      })
+    }
+  });
+  nameRace.api.emailForm();
+  nameRace.elements['display-name'].value = 'Taken';
+  nameRace.elements['account-email'].value = 'fresh@example.invalid';
+  nameRace.elements['account-password'].value = 'Test-password1!';
+  await nameRace.elements['email-form'].onsubmit(event);
+  assert.equal(nameChecks, 2);
+  assert.equal(nameRace.elements['account-status'].textContent, 'Username already taken');
+  assert.equal(nameRace.elements['account-status'].dataset.error, 'true');
+
   // A confirmed duplicate gets a message without navigating or promising mail
-  const duplicate = harness({ guest: true, auth: {
-    signUp: async () => ({ data: { session: null, user: { identities: [] } }, error: null })
-  } });
+  const duplicate = harness({
+    guest: true,
+    auth: {
+      signUp: async () => ({
+        data: { session: null, user: { identities: [] } },
+        error: null
+      })
+    }
+  });
   duplicate.api.emailForm();
   duplicate.elements['display-name'].value = 'Viewer';
   duplicate.elements['account-email'].value = 'existing@example.invalid';
   duplicate.elements['account-password'].value = 'Test-password1!';
   await duplicate.elements['email-form'].onsubmit(event);
   assert.equal(duplicate.views.at(-1).title, 'Sign up');
-  assert.equal(duplicate.elements['account-status'].textContent, 'An account already exists with this email');
+  assert.equal(
+    duplicate.elements['account-status'].textContent,
+    'An account with this email already exists'
+  );
+  assert.equal(duplicate.elements['account-status'].dataset.error, 'true');
 
   // Some provider settings report the same duplicate as an explicit error
-  duplicate.auth.signUp = async () => ({ data: {}, error: { code: 'user_already_exists' } });
+  duplicate.auth.signUp = async () => ({
+    data: {},
+    error: { code: 'user_already_exists' }
+  });
   duplicate.api.emailForm();
   duplicate.elements['display-name'].value = 'Viewer';
   duplicate.elements['account-email'].value = 'existing@example.invalid';
   duplicate.elements['account-password'].value = 'Test-password1!';
   await duplicate.elements['email-form'].onsubmit(event);
   assert.equal(duplicate.views.at(-1).title, 'Sign up');
-  assert.equal(duplicate.elements['account-status'].textContent, 'An account already exists with this email');
+  assert.equal(
+    duplicate.elements['account-status'].textContent,
+    'An account with this email already exists'
+  );
 
   // Delivery errors belong on the form and must not show the success reminder
-  const mailFailure = harness({ guest: true, auth: {
-    signUp: async () => ({ data: {}, error: new Error('Error sending confirmation email') })
-  } });
+  const mailFailure = harness({
+    guest: true,
+    auth: {
+      signUp: async () => ({
+        data: {},
+        error: new Error('Error sending confirmation email')
+      })
+    }
+  });
   mailFailure.api.emailForm();
   mailFailure.elements['display-name'].value = 'Viewer';
   mailFailure.elements['account-email'].value = 'new@example.invalid';
@@ -541,12 +637,18 @@ function harness(options = {}) {
   old['account-password'].value = 'Test-password1!';
   old['display-name'].value = 'Viewer';
   const submission = old['email-form'].onsubmit(event);
+  // Let the availability request finish before leaving the pending signup
+  await tick();
   forms.api.emailForm(true);
   forms.elements['account-password'].value = 'keep-current-input';
   signup.resolve({ data: { session: null }, error: null });
   await submission;
   assert.equal(old['account-password'].value, '');
-  assert.equal(forms.views.at(-1).title, 'Log in', 'A late signup response must not reopen Me');
+  assert.equal(
+    forms.views.at(-1).title,
+    'Log in',
+    'A late signup response must not reopen Me'
+  );
   assert.equal(
     forms.elements['account-password'].value,
     'keep-current-input',
