@@ -1,0 +1,311 @@
+const Accounts = (() => {
+
+  // Keep the project path when an email link brings us back
+  const returnUrl = new URL('./', location.href).href;
+
+  // This text is shared by signup and reset so the requirements don't drift apart
+  const passwordRule =
+    'Use at least 8 characters, with uppercase, lowercase, a number and a symbol.';
+
+  // Keep this in sync with the rules saved in the account service
+  const validPassword = (value) =>
+    value.length >= 8 &&
+    /[a-z]/.test(value) &&
+    /[A-Z]/.test(value) &&
+    /[0-9]/.test(value) &&
+    Array.from(value).some((char) => '!@#$%^&*()_+-=[]{};\'\\:"|<>?,./`~'.includes(char));
+
+  // Account setup is optional for browsing so catch startup failures here
+  let client;
+  try {
+    client = window.supabase.createClient(AUTH_CONFIG.url, AUTH_CONFIG.publishableKey, {
+      auth: { flowType: 'pkce', persistSession: true, detectSessionInUrl: true }
+    });
+  } catch {
+
+    /* Let guests keep browsing if accounts can't start */
+  }
+  let user = null,
+    revision = 0,
+    profileName = 'Viewer',
+    saveTimer,
+    pending,
+    queue = Promise.resolve(),
+    conflict = false;
+
+  // Old requests might finish after logout or an account switch
+  // Use the session counter to keep those results out of the new account
+  let sessionId,
+    sessionEpoch = 0,
+    saveVersion = 0,
+    reloading = false;
+
+  // Auth can report the same change more than once
+  // Queue 1 reload so the callback can finish before the page goes away
+  function reload() {
+    if (reloading) return;
+    reloading = true;
+    setTimeout(() => location.reload(), 0);
+  }
+
+  // Only keep preferences that belong to videos and creators in this collection
+  function clean(value) {
+    const ids = new Set(POSTS.map((post) => post.id));
+    const creators = new Set(POSTS.map((post) => post.creator));
+
+    // Scores are only useful for tags we can actually recommend
+    const tags = new Set(POSTS.flatMap((post) => post.tags));
+    return {
+
+      // A set removes duplicate likes imported from more than 1 device
+      likes: [
+        ...new Set(
+          (Array.isArray(value?.likes) ? value.likes : []).filter((id) => ids.has(id))
+        )
+      ],
+
+      // Drop creators that are no longer in the catalog
+      following: [
+        ...new Set(
+          (Array.isArray(value?.following) ? value.following : []).filter((id) =>
+            creators.has(id)
+          )
+        )
+      ],
+
+      // Old watched IDs should not keep growing after catalog entries are removed
+      seen: [
+        ...new Set(
+          (Array.isArray(value?.seen) ? value.seen : []).filter((id) => ids.has(id))
+        )
+      ],
+
+      // Keep the strongest 128 interests and clamp old or edited values
+      scores: Object.fromEntries(
+        Object.entries(
+          value?.scores && typeof value.scores === 'object' ? value.scores : {}
+        )
+          .filter(([tag, score]) => tags.has(tag) && Number.isFinite(score))
+          .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
+          .slice(0, 128)
+          .map(([tag, score]) => [tag, Math.max(-20, Math.min(100, score))])
+      )
+    };
+  }
+
+  async function init(guest) {
+
+    // A failed account setup should still leave a usable guest feed
+    if (!client) return clean(guest);
+
+    // Remember which session started this read
+    // Check it after each wait in case someone logs out meanwhile
+    const epoch = sessionEpoch;
+    const { data, error } = await client.auth.getSession();
+    if (error) throw error;
+    if (epoch !== sessionEpoch) return clean(guest);
+    sessionId = data.session?.user?.id || null;
+
+    // No saved session means we should not read any account profile
+    if (!data.session) return clean(guest);
+
+    // Check the account with the server before loading its profile
+    const verified = await client.auth.getUser();
+    if (verified.error) throw verified.error;
+    if (epoch !== sessionEpoch) return clean(guest);
+    const verifiedUser = verified.data.user;
+    let result = await client
+      .from('viewer_profiles')
+      .select('display_name,preferences,revision')
+      .eq('user_id', verifiedUser.id)
+      .maybeSingle();
+    if (result.error) throw result.error;
+    if (epoch !== sessionEpoch) return clean(guest);
+
+    // A confirmed account might not have opened the app before
+    // Create its profile on the first visit rather than during signup
+    if (!result.data) {
+      const name =
+        String(verifiedUser.user_metadata?.display_name || 'Viewer')
+          .trim()
+          .slice(0, 30) || 'Viewer';
+      result = await client
+        .from('viewer_profiles')
+        .insert({ user_id: verifiedUser.id, display_name: name })
+        .select('display_name,preferences,revision')
+        .single();
+
+      // Another tab could have made the profile between our read and insert
+      if (result.error?.code === '23505')
+        result = await client
+          .from('viewer_profiles')
+          .select('display_name,preferences,revision')
+          .eq('user_id', verifiedUser.id)
+          .maybeSingle();
+      if (result.error) throw result.error;
+    }
+    if (epoch !== sessionEpoch) return clean(guest);
+
+    // Don't pretend the account loaded if its profile is still missing
+    if (!result.data) throw new Error('Account preferences could not load.');
+    user = verifiedUser;
+    sessionId = user.id;
+
+    // Future saves must start from the revision we actually read
+    revision = result.data.revision;
+    profileName = result.data.display_name;
+
+    // Guest likes stay separate unless the user chooses to import them
+    return clean(result.data.preferences);
+  }
+
+  function persist(value) {
+
+    // A conflict needs a fresh read before this tab can safely save again
+    if (!user || conflict) return;
+
+    // Replace the pending snapshot so the latest state wins within this tab
+    pending = clean(value);
+    saveVersion++;
+    clearTimeout(saveTimer);
+
+    // Wait for a burst of likes to settle instead of saving every tap
+    saveTimer = setTimeout(flush, 400);
+  }
+
+  function flush() {
+
+    // Return the same queue so logout can wait even when there's nothing new to send
+    if (!pending || !user || conflict) return queue;
+
+    // Capture the owner now rather than reading a different account later
+    const preferences = pending,
+      owner = user.id,
+      epoch = sessionEpoch,
+      version = saveVersion;
+
+    // New interactions can build another pending snapshot while this one saves
+    pending = null;
+
+    // Save in order so a slower request cannot land after a newer one
+    queue = queue
+      .then(async () => {
+        if (conflict || epoch !== sessionEpoch || user?.id !== owner) return;
+
+        // Don't overwrite a newer save from another device
+        const result = await client
+          .from('viewer_profiles')
+          .update({
+            preferences,
+            revision: revision + 1,
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', owner)
+          .eq('revision', revision)
+          .select('revision')
+          .maybeSingle();
+        if (epoch !== sessionEpoch || user?.id !== owner) return;
+        if (result.error) throw result.error;
+
+        // No updated row means the revision changed elsewhere
+        // Stop saving until reload rather than guessing how to merge
+        if (!result.data) {
+          conflict = true;
+          throw new Error(
+            'Another device changed your profile. Reload before saving more changes.'
+          );
+        }
+
+        // Use the server's revision for the next queued write
+        revision = result.data.revision;
+      })
+      .catch((error) => {
+        if (epoch !== sessionEpoch || user?.id !== owner) return;
+
+        // Keep the failed save for retry unless a newer change has replaced it
+        if (!conflict && version === saveVersion && !pending) pending = preferences;
+        toast(
+          'Changes were not saved. ' +
+            (error.message || 'Check your connection and try again.')
+        );
+      });
+    return queue;
+  }
+
+  function profile() {
+
+    // Keep signup inside Me and remember how to return here
+    if (!user) {
+      Panels.page(
+        'Me',
+        '<section class="viewer-guest"><div class="guest-portrait" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 22a8 8 0 0 1 16 0"/></svg></div><h3>Sign up for an account</h3><p>Save your likes and follow creators.</p><button class="primary" id="signup">Sign up</button><p>Already have an account? <button class="text-button" id="login">Log in</button></p></section>',
+        { tab: 'me', reopen: profile }
+      );
+      $('#signup').onclick = () => Panels.signup(false, profile);
+      $('#login').onclick = () => Panels.signup(true, profile);
+      return;
+    }
+    Panels.page(
+      'Me',
+      '<section class="creator-header viewer-header"><div class="profile-portrait" id="account-initial" aria-hidden="true"></div><h3 id="account-name"></h3><p id="account-counts"></p></section><h3 class="liked-heading">Liked videos</h3><div id="liked-list"></div><div class="profile-account-actions"><button id="import-preferences" class="text-button">Import preferences from this device</button><button id="signout" class="text-button">Log out</button></div>',
+      { tab: 'me', reopen: profile }
+    );
+
+    // Names are user input so put them in text nodes
+    $('#account-initial').textContent = Array.from(profileName)[0] || '?';
+    $('#account-name').textContent = profileName;
+    $('#account-counts').textContent =
+      state.likes.length + ' liked videos, ' + state.following.length + ' following';
+
+    // Only render liked videos that still exist in the current catalog
+    Panels.renderPosts(
+      POSTS.filter((post) => state.likes.includes(post.id)),
+      $('#liked-list')
+    );
+    $('#import-preferences').onclick = () => {
+
+      // Import is deliberate since this device might have been shared
+      let guest;
+      try {
+        guest = clean(JSON.parse(localStorage.getItem('tiktok2020') || '{}'));
+      } catch {
+        guest = clean({});
+      }
+
+      // Combine the lists but keep account scores where the same tag exists
+      state = clean({
+        likes: [...state.likes, ...guest.likes],
+        following: [...state.following, ...guest.following],
+        seen: [...state.seen, ...guest.seen],
+        scores: { ...guest.scores, ...state.scores }
+      });
+
+      // Save the merged preferences before repainting counts and liked videos
+      persist(state);
+      refreshButtons();
+      profile();
+    };
+    const signout = $('#signout');
+    signout.onclick = async () => {
+
+      // A second click must not start another logout while the first is waiting
+      if (signout.disabled) return;
+      signout.disabled = true;
+      try {
+
+        // Give pending changes a chance to save before ending this session
+        await flush();
+
+        // Log out this browser without ending sessions on the user's other devices
+        const { error } = await client.auth.signOut({ scope: 'local' });
+        if (error) throw error;
+        reload();
+      } catch {
+        toast('Could not log out. Try again.');
+      } finally {
+        signout.disabled = false;
+      }
+    };
+  }
+
+})();
