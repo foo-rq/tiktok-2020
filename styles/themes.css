@@ -1,0 +1,79 @@
+:root {
+  --text-secondary: 14px;
+  --bg: #fff;
+  --panel: #fff;
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  --bg: #101010;
+  --desktop-ink: #f2f2f3;
+  --panel: #121212;
+  --ink: #f2f2f3;
+  --muted: #b5b5b8;
+  --soft: #28282b;
+  --pink-ink: #ff7595;
+  --signup-separator: #303033;
+  color-scheme: dark;
+}
+
+nav {
+  background: var(--panel);
+  border-color: var(--soft);
+}
+
+nav button {
+  color: var(--ink);
+}
+
+nav .selected svg {
+  fill: var(--ink);
+}
+
+nav small {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+#toast {
+  background: var(--panel);
+  color: var(--ink);
+  border: 1px solid var(--soft);
+}
+
+.account-form input {
+  background: var(--soft);
+  color: var(--ink);
+}
+
+/* Keep these dimensions shared so switching pages doesn't nudge the menu */
+nav {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  font-size: 16px;
+  line-height: 1;
+}
+
+nav button {
+  width: 100%;
+  height: 52px;
+  min-width: 0;
+  align-content: center;
+  line-height: 1;
+}
+
+nav button > [data-icon],
+nav svg {
+  display: block;
+}
+
+nav .create-icon {
+  border: 1px solid var(--soft);
+}
+
+@media (min-width: 761px) {
+  .phone {
+    border: 0;
+  }
+}
