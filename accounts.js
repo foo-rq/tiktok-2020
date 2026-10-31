@@ -308,4 +308,238 @@ const Accounts = (() => {
     };
   }
 
+  function emailForm(login = false, back) {
+    if (!client) {
+      toast('Accounts are unavailable. Reload to try again.');
+      return;
+    }
+    Panels.authPage(
+      login ? 'Log in' : 'Sign up',
+      '<form id="email-form" class="account-form">' +
+        (!login
+          ? '<label for="display-name">Display name</label><input id="display-name" name="display-name" autocomplete="nickname" required maxlength="30">'
+          : '') +
+        '<label for="account-email">Email</label><input id="account-email" name="email" type="email" autocomplete="username" required maxlength="254">' +
+        '<label for="account-password">Password</label><input id="account-password" name="password" type="password" autocomplete="' +
+        (login ? 'current-password' : 'new-password') +
+        '" required minlength="' +
+        (login ? 1 : 8) +
+        '" maxlength="128">' +
+        (!login
+          ? '<p class="panel-note">Use at least 8 characters, with uppercase, lowercase, a number and a symbol. Verify your email before logging in.</p>'
+          : '') +
+        '<button class="account-submit" type="submit">' +
+        (login ? 'Log in' : 'Sign up') +
+        '</button><p id="account-status" role="status" aria-live="polite"></p>' +
+        (login
+          ? '<button type="button" id="forgot-password" class="text-button">Forgot password?</button>'
+          : '') +
+        '</form>',
+      () => Panels.signup(login, back)
+    );
+
+    // Hold the form nodes here so an async response still refers to its own form
+    const form = $('#email-form'),
+      submit = form.querySelector('[type="submit"]');
+    const status = form.querySelector('#account-status'),
+      emailInput = form.querySelector('#account-email');
+    const passwordInput = form.querySelector('#account-password'),
+      nameInput = form.querySelector('#display-name');
+    const forgot = form.querySelector('#forgot-password');
+    form.onsubmit = async (event) => {
+      event.preventDefault();
+
+      // Block repeat submissions while the first request is still running
+      if (submit.disabled || !form.reportValidity()) return;
+      const email = emailInput.value.trim(),
+        password = passwordInput.value;
+
+      // Never trim passwords since spaces could be part of the password
+      const name = login ? '' : nameInput.value.trim();
+
+      // Whitespace passes the browser's required check but isn't a usable name
+      if (!login && !name) {
+        status.textContent = 'Enter a display name.';
+        return;
+      }
+
+      // Apply the new password rules at signup without rejecting an existing login
+      if (!login && !validPassword(password)) {
+        status.textContent = passwordRule;
+        return;
+      }
+      submit.disabled = true;
+      status.textContent = login ? 'Logging in...' : 'Creating account...';
+      if (forgot) forgot.disabled = true;
+      try {
+
+        // Both paths share the form but only signup sends a display name
+        const result = login
+          ? await client.auth.signInWithPassword({ email, password })
+          : await client.auth.signUp({
+              email,
+              password,
+              options: { emailRedirectTo: returnUrl, data: { display_name: name } }
+            });
+        if (result.error) throw result.error;
+
+        // Clear the field once the server accepts the request
+        passwordInput.value = '';
+
+        // Confirmation can leave us without a session even after signup succeeds
+        if (result.data.session) {
+          reload();
+          return;
+        }
+        status.textContent =
+          'Check your email to confirm your account, then return here to log in.';
+      } catch (error) {
+        status.textContent =
+
+          // This provider error means delivery is restricted rather than a bad password
+          error.code === 'email_address_not_authorized'
+            ? 'Email delivery is in private testing. Use the email on your project account for now.'
+            : error.message || 'Account service unavailable. Try again.';
+      } finally {
+
+        // Leave the form usable after a rejected request
+        submit.disabled = false;
+        if (forgot) forgot.disabled = false;
+      }
+    };
+
+    // Disable both actions while either request is in progress
+    if (forgot)
+      forgot.onclick = async () => {
+
+        // Validate the email without making the user fill in a login password
+        if (forgot.disabled || !emailInput.reportValidity()) return;
+        forgot.disabled = true;
+        submit.disabled = true;
+        status.textContent = 'Sending reset email...';
+        try {
+          const result = await client.auth.resetPasswordForEmail(
+            emailInput.value.trim(),
+            { redirectTo: returnUrl + '?password_reset=1' }
+          );
+          if (result.error) throw result.error;
+
+          // Use the same message so this screen doesn't reveal registered emails
+          status.textContent =
+            'If the account exists, a password reset email will arrive shortly.';
+        } catch (error) {
+          status.textContent =
+            error.message || 'Could not send a reset email. Try again.';
+        } finally {
+          forgot.disabled = false;
+          submit.disabled = false;
+        }
+      };
+  }
+
+  // This form is only reached through a recovery session from the email link
+  function resetForm() {
+    Panels.authPage(
+      'Reset password',
+      '<form id="reset-form" class="account-form"><label for="new-password">New password</label><input id="new-password" type="password" autocomplete="new-password" minlength="8" maxlength="128" required><button type="submit" class="account-submit">Save password</button><p id="reset-status" role="status"></p></form>'
+    );
+    const form = $('#reset-form'),
+      password = form.querySelector('#new-password');
+    const submit = form.querySelector('[type="submit"]'),
+      status = form.querySelector('#reset-status');
+    form.onsubmit = async (event) => {
+      event.preventDefault();
+      if (submit.disabled || !form.reportValidity()) return;
+
+      // Reset and signup must enforce the same new password requirements
+      if (!validPassword(password.value)) {
+        status.textContent = passwordRule;
+        return;
+      }
+      submit.disabled = true;
+      status.textContent = 'Saving password...';
+      try {
+        const result = await client.auth.updateUser({ password: password.value });
+        if (result.error) throw result.error;
+        password.value = '';
+
+        // Finish the recovery session and ask for a fresh login
+        const signedOut = await client.auth.signOut({ scope: 'local' });
+
+        // The password already changed so don't report the whole reset as failed
+        if (signedOut.error) {
+          status.textContent =
+            'Password saved. Log out from your profile before logging in again.';
+          return;
+        }
+
+        // Remove recovery parameters so refresh doesn't reopen the reset flow
+        location.replace(returnUrl);
+      } catch (error) {
+        status.textContent = error.message || 'Could not save your password. Try again.';
+      } finally {
+        submit.disabled = false;
+      }
+    };
+  }
+  client?.auth.onAuthStateChange((event, session) => {
+
+    // Ignore routine token events that don't change which account owns the page
+    if (event !== 'SIGNED_IN' && event !== 'SIGNED_OUT' && event !== 'PASSWORD_RECOVERY')
+      return;
+    const nextId = session?.user?.id || null;
+
+    // Token refreshes for the same account shouldn't reset the page
+    const changed = sessionId !== undefined && nextId !== sessionId;
+
+    // Clear queued work before the next account can start saving
+    if (event === 'SIGNED_OUT' || changed) {
+      sessionEpoch++;
+      user = null;
+      pending = null;
+      conflict = false;
+      clearTimeout(saveTimer);
+    }
+    sessionId = nextId;
+    if (event === 'PASSWORD_RECOVERY') {
+
+      // Recovery can arrive before the form container exists
+      const showRecovery = () => {
+
+        // Don't leave the previous account's likes visible during recovery
+        if (changed) {
+          try {
+            state = clean(JSON.parse(localStorage.getItem('tiktok2020') || '{}'));
+          } catch {
+            state = clean({});
+          }
+          refreshButtons();
+        }
+        resetForm();
+      };
+
+      // Wait for the DOM when recovery fires during page startup
+      if (document.readyState === 'loading')
+        document.addEventListener('DOMContentLoaded', showRecovery, { once: true });
+      else setTimeout(showRecovery, 0);
+    } else if (changed) reload();
+  });
+
+  // Try pending saves again when leaving the tab or getting a connection back
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) flush();
+  });
+  window.addEventListener('online', flush);
+
+  // Expose the actions the rest of the app needs without exposing the client
+  return {
+    init,
+    persist,
+    profile,
+    emailForm,
+    clean,
+    get signedIn() {
+      return !!user;
+    }
+  };
 })();
