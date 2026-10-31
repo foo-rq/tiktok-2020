@@ -1,0 +1,1 @@
+Additional metadata: Erik van de Ven, TikTok Trending Videos, https://www.kaggle.com/datasets/erikvdven/tiktok-trending-december-2020 . Kaggle metadata reports CC0. Imported 2026-10-29. The source was a personalized trending sample, mostly September–December. No video files or raw request headers imported. A dated ID does not confirm present-day playback availability.
