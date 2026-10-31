@@ -1,0 +1,169 @@
+.enable-sound {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  padding: 9px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--shade);
+}
+
+.enable-sound svg {
+  width: 26px;
+  height: 26px;
+  stroke-width: 2;
+}
+
+#info svg {
+  width: 18px;
+  height: 18px;
+}
+
+.caption p {
+  overflow-wrap: anywhere;
+}
+
+.comment > div {
+  min-width: 0;
+}
+
+.comment p {
+  overflow-wrap: anywhere;
+}
+
+.action.like svg {
+  stroke: none;
+}
+
+.video[data-retry] .player {
+  visibility: hidden;
+}
+
+.video[data-retry] .start {
+  width: calc(100% - 48px);
+  max-width: 280px;
+  white-space: normal;
+}
+
+.player-error {
+  display: grid;
+  justify-items: center;
+  gap: 16px;
+  text-align: center;
+}
+
+.player-error strong {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.retry-label {
+  padding: 8px 24px;
+  border-radius: 3px;
+  background: var(--white);
+  color: var(--black);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+:root[data-theme='dark'] {
+  --bg: #101010;
+  --desktop-ink: #fff;
+}
+
+.desktop {
+  color: var(--desktop-ink);
+}
+
+.theme-toggle {
+  position: fixed;
+  right: 24px;
+  top: 24px;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  color: var(--desktop-ink);
+  z-index: 4;
+}
+
+.theme-toggle svg {
+  width: 24px;
+  height: 24px;
+}
+
+@media (max-width: 760px) {
+  .theme-toggle {
+    display: none;
+  }
+}
+
+.desktop {
+  position: fixed;
+  left: calc(50% - 530px);
+  top: 0;
+  height: 100dvh;
+}
+
+.theme-toggle svg {
+  fill: currentColor;
+  stroke: none;
+}
+
+.action.comments svg {
+  stroke: none;
+}
+
+@media (max-width: 1100px) {
+  .desktop {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .phone {
+    max-width: 420px;
+  }
+}
+
+dialog {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.video[data-loading] .caption,
+.video[data-loading] .actions {
+  visibility: hidden;
+}
+
+.video[data-recovering] .player {
+  visibility: hidden;
+}
+
+.action.like svg,
+.action.comments svg {
+  width: 36px;
+  height: 36px;
+}
+
+.actions {
+  width: 52px;
+  justify-items: center;
+}
+
+.action {
+  width: 52px;
+}
+
+.creator-control {
+  justify-self: center;
+}
+
+.sheet-head button {
+  min-width: 44px;
+  min-height: 44px;
+}
+

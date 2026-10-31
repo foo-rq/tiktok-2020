@@ -1,0 +1,99 @@
+/* Keep the bottom bar dimensions shared across Home and the full page screens */
+nav {
+  height: calc(58px + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  background: var(--black);
+  border-top: 1px solid var(--line);
+}
+
+nav button {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  color: var(--white);
+  opacity: 0.65;
+  min-width: 44px;
+  min-height: 44px;
+}
+
+nav small {
+  font-size: 10px;
+  line-height: 1.2;
+  font-weight: 600;
+}
+
+nav .selected {
+  opacity: 1;
+}
+
+nav .selected svg {
+  fill: var(--white);
+}
+
+nav svg {
+  width: 23px;
+  height: 23px;
+}
+
+.create-icon {
+  background: var(--white);
+  color: var(--black);
+  width: 38px;
+  height: 26px;
+  border-radius: 5px;
+  font-size: 26px;
+  line-height: 26px;
+  box-shadow:
+    -5px 0 var(--cyan),
+    5px 0 var(--pink);
+}
+
+.enable-sound {
+  position: absolute;
+  top: 88px;
+  left: 12px;
+  z-index: 3;
+  border: 1px solid var(--white);
+  border-radius: 4px;
+  background: var(--shade);
+  padding: 8px 12px;
+  color: var(--white);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.enable-sound[hidden] {
+  display: none;
+}
+
+#empty {
+  position: absolute;
+  inset: 88px 24px 80px;
+  text-align: center;
+  padding-top: 35%;
+  line-height: 1.5;
+}
+
+#empty h2 {
+  font-size: 20px;
+}
+
+#empty p {
+  font-size: 14px;
+  color: var(--white);
+  opacity: 0.7;
+}
+
+#empty button,
+.primary {
+  background: var(--pink-ink);
+  color: var(--white);
+  padding: 12px 24px;
+  border-radius: 3px;
+  font-weight: 600;
+}
+
