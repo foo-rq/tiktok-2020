@@ -7,9 +7,9 @@ A little time machine for the FYP you remember, or the one you missed.
 **[Start scrolling](https://foo-rq.github.io/tiktok-2020/)**
 
 <p>
-  <img src="docs/media/feed.jpg" width="240" alt="Renegade playing in the feed, with its original proportions and familiar right-hand controls">
-  <img src="docs/media/discover.jpg" width="240" alt="Discover collections for dance, comedy and food">
-  <img src="docs/media/comments.jpg" width="240" alt="Archived comments on Renegade, dated February 2020">
+  <img src="docs/media/feed.jpg" width="30%" alt="Renegade playing in the feed, with its original proportions and familiar right-hand controls">
+  <img src="docs/media/discover.jpg" width="30%" alt="Discover collections for dance, comedy and food">
+  <img src="docs/media/comments.jpg" width="30%" alt="Archived comments on Renegade, dated February 2020">
 </p>
 
 ## Got 145 minutes?
