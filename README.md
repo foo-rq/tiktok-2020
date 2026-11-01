@@ -53,20 +53,64 @@ Video creation and messaging are disabled. Videos, sounds and comments belong to
 
 </details>
 
-<details>
-<summary>Run it locally</summary>
+## For developers
 
-The app uses HTML, CSS and JavaScript, with Supabase for accounts and saved preferences. There's no build step.
+### Stack
+
+| Part | What it uses |
+| --- | --- |
+| Interface | HTML, CSS and plain JavaScript |
+| Playback | Native HTML video with streams resolved by fxTikTok |
+| Accounts | Supabase Auth |
+| Saved preferences | Supabase Postgres with row-level security |
+| Catalog and comments | Static JavaScript and paged JSON files |
+| Hosting | GitHub Pages |
+
+There's no frontend framework, package install or build step. Metropolis is bundled as the free font fallback. Third-party asset licences are in [assets/](assets/).
+
+### Run locally
+
+You'll need Python 3. Run these commands in a terminal:
 
 ```sh
+git clone https://github.com/foo-rq/tiktok-2020.git
+cd tiktok-2020
 python -m http.server 5188 --bind 127.0.0.1
 ```
 
-Open [localhost:5188](http://127.0.0.1:5188/).
+Open [localhost:5188](http://127.0.0.1:5188/). Serve the folder over HTTP rather than opening the HTML file directly, since comment pages load with fetch.
 
-For your own deployment, configure a Supabase project using [account-schema.sql](account-schema.sql), then update [auth-config.js](auth-config.js). That browser key is intentionally public. Keep secret keys and email credentials out of the repository.
+### Set up your own accounts
 
-Run the checks with Node.js and Python. In PowerShell:
+1. Create a Supabase project and run [account-schema.sql](account-schema.sql) against the fresh database. It creates the profile table, ownership policies and username reservation rules.
+2. Enable email signup with email confirmation. Configure your sender's SMTP details in the Supabase dashboard. The templates in [email-templates/](email-templates/) are available if you want the same email copy.
+3. Set the Auth site URL to your deployed app and allow its return URL. Add your localhost return URL too if you'll test signup locally.
+4. Update [auth-config.js](auth-config.js) with your project URL and publishable key.
+
+The publishable key belongs in the browser. Secret keys and SMTP credentials don't. Profile access is restricted to the signed-in owner by the database policies, with a 128 KB preference limit per account.
+
+### How the data works
+
+Guest preferences and search history stay in browser storage. Signed-in likes, follows and feed preferences save to that user's profile. Importing device preferences is an explicit action.
+
+Videos stream from an external host. The video collection isn't bundled with the app. Comments load from [comments/](comments/) when opened, in pages of up to 50. Each filename contains the video ID and page number, such as `6876424179084709126-0.json`.
+
+### Find your way around
+
+| File or folder | What's there |
+| --- | --- |
+| [app.js](app.js) | Playback, feed selection, gestures and comment paging |
+| [panels.js](panels.js) | Discover, profiles, sharing and navigation |
+| [accounts.js](accounts.js) | Account forms, sessions and preference saves |
+| [data.js](data.js) | Video catalog, dates and archived comment counts |
+| [styles/](styles/) and [panels.css](panels.css) | Layout, themes and screen styles |
+| [scripts/](scripts/) | Comment collection tools |
+| [sources/](sources/) | Collection records and interface research |
+| [docs/media/](docs/media/) | README screenshots and demo clips |
+
+### Checks
+
+You'll need Node.js as well as Python. In PowerShell:
 
 ```powershell
 Get-ChildItem check*.cjs | ForEach-Object {
@@ -76,6 +120,8 @@ Get-ChildItem check*.cjs | ForEach-Object {
 python check-collector.py
 ```
 
-The checks cover playback, feed selection, account state, comment paging, sharing, search history and data validation. They don't send emails or create accounts. The live email-confirmation and login flows were separately tested with disposable accounts.
+These checks cover playback, feed selection, account state, comment paging, sharing, search history and data validation. They use local fixtures and mocked account responses, so they don't send emails or create users. Live signup, confirmation, login and account isolation were also tested separately with disposable accounts.
 
-</details>
+### Deploy
+
+GitHub Pages serves this repository as static files. Publish the root of your chosen branch and keep [.nojekyll](.nojekyll) in place. There's no build command. Update the Supabase return URLs when you change the site's address.
