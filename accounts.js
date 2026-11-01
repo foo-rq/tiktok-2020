@@ -241,7 +241,7 @@ const Accounts = (() => {
         '<section class="viewer-guest"><div class="guest-portrait" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 22a8 8 0 0 1 16 0"/></svg></div><h3>Sign up for an account</h3><p>Save your likes and follow creators.</p>' +
 
         // Keep this on Me so the reminder stays visible after the form closes
-        (showEmailNotice === true ? '<div class="signup-email-note" role="status"><p>Please check your email.</p><small>Check spam if you can&#39;t find it</small></div>' : '') +
+        (showEmailNotice === true ? '<div class="signup-email-note" role="status"><p>Please check your email.</p><small>Check spam if you can&#39;t find it.</small></div>' : '') +
         '<button class="primary" id="signup">Sign up</button><p>Already have an account? <button class="text-button" id="login">Log in</button></p></section>',
         { tab: 'me', reopen: profile }
       );
@@ -251,15 +251,24 @@ const Accounts = (() => {
     }
     Panels.page(
       'Me',
-      '<section class="creator-header viewer-header"><div class="profile-portrait" id="account-initial" aria-hidden="true"></div><h3 id="account-name"></h3><p id="account-counts"></p></section><h3 class="liked-heading">Liked videos</h3><div id="liked-list"></div><div class="profile-account-actions"><button id="import-preferences" class="text-button">Import preferences from this device</button><button id="signout" class="text-button">Log out</button></div>',
-      { tab: 'me', reopen: profile }
+      '<section class="creator-header viewer-header"><div class="profile-portrait" id="account-initial" aria-hidden="true"></div><h3 id="account-name"></h3><p id="account-counts"></p></section><h3 class="liked-heading">Liked videos</h3><div id="liked-list"></div>',
+      {
+        tab: 'me',
+        reopen: profile,
+
+        // Keep these outside the liked-video scroll area so they never disappear below it
+        // A long liked list shouldn't make someone hunt for Log out
+        footer: '<div class="profile-account-actions"><button id="import-preferences" class="text-button">Import preferences from this device</button><button id="signout" class="text-button">Log out</button></div>'
+      }
     );
 
     // Names are user input so put them in text nodes
     $('#account-initial').textContent = Array.from(profileName)[0] || '?';
     $('#account-name').textContent = profileName;
+
+    // Use the singular for 1 like while keeping the following count as a label
     $('#account-counts').textContent =
-      state.likes.length + ' liked videos, ' + state.following.length + ' following';
+      state.likes.length + (state.likes.length === 1 ? ' liked video, ' : ' liked videos, ') + state.following.length + ' following';
 
     // Only render liked videos that still exist in the current catalog
     Panels.renderPosts(
@@ -320,6 +329,14 @@ const Accounts = (() => {
     return data;
   }
 
+  // Provider errors can arrive without punctuation so finish the sentence before showing it
+  function errorText(error, fallback) {
+    const message = String(error.message || fallback).trim();
+
+    // Keep existing question marks and exclamation marks instead of adding another stop
+    return /[.!?]$/.test(message) ? message : message + '.';
+  }
+
   function emailForm(login = false, back) {
     if (!client) {
       toast('Accounts are unavailable. Reload to try again.');
@@ -342,11 +359,9 @@ const Accounts = (() => {
           : '') +
         '<button class="account-submit" type="submit">' +
         (login ? 'Log in' : 'Sign up') +
-        '</button><p id="account-status" role="status" aria-live="polite"></p>' +
-        (login
-          ? '<button type="button" id="forgot-password" class="text-button">Forgot password?</button>'
-          : '') +
-        '</form>',
+
+        // Keep validation and delivery failures in 1 announced slot below the submit button
+        '</button><p id="account-status" role="status" aria-live="polite"></p></form>',
       () => Panels.signup(login, back)
     );
 
@@ -357,12 +372,12 @@ const Accounts = (() => {
       emailInput = form.querySelector('#account-email');
     const passwordInput = form.querySelector('#account-password'),
       nameInput = form.querySelector('#display-name');
-    const forgot = form.querySelector('#forgot-password');
     form.onsubmit = async (event) => {
       event.preventDefault();
 
       // Block repeat submissions while the first request is still running
       if (submit.disabled || !form.reportValidity()) return;
+
       // Clear the previous error colour while checking this submission
       status.dataset.error = 'false';
       const email = emailInput.value.trim(),
@@ -386,7 +401,6 @@ const Accounts = (() => {
       }
       submit.disabled = true;
       status.textContent = login ? 'Logging in...' : 'Creating account...';
-      if (forgot) forgot.disabled = true;
       let checkedName = false;
       try {
 
@@ -396,8 +410,10 @@ const Accounts = (() => {
           if ($('#email-form') !== form) return;
           checkedName = true;
           if (!available) {
+
+            // This is a validation failure so keep the same form and mark the shared slot red
             status.dataset.error = 'true';
-            status.textContent = 'Username already taken';
+            status.textContent = 'Username already taken.';
             return;
           }
         }
@@ -423,15 +439,18 @@ const Accounts = (() => {
         // A late response shouldn't pull someone away from a different page
         if ($('#email-form') !== form) return;
 
+
         // Confirmed accounts can come back without identities instead of an error
         // Stay here with the message rather than suggesting another email was sent
         if (!login && result.data.user?.identities?.length === 0) {
           status.dataset.error = 'true';
-          status.textContent = 'An account with this email already exists';
+          status.textContent = 'An account with this email already exists.';
           return;
         }
 
         // A new signup returns to Me with the email reminder kept on that page
+
+        // The notice belongs to Me so leaving the form doesn't hide the next step
         profile(true);
       } catch (error) {
         if ($('#email-form') !== form) return;
@@ -442,7 +461,7 @@ const Accounts = (() => {
         if (checkedName && !['user_already_exists', 'email_exists'].includes(error.code)) {
           try {
             if (!(await usernameAvailable(name))) {
-              status.textContent = 'Username already taken';
+              status.textContent = 'Username already taken.';
               return;
             }
           } catch {
@@ -456,45 +475,16 @@ const Accounts = (() => {
           // Duplicate signup can also arrive as an error rather than an empty identity list
           // Keep delivery errors on the form so they aren't mistaken for success
           error.code === 'user_already_exists' || error.code === 'email_exists'
-            ? 'An account with this email already exists'
+            ? 'An account with this email already exists.'
             : error.code === 'email_address_not_authorized'
               ? 'Email delivery is in private testing. Use the email on your project account for now.'
-              : error.message || 'Account service unavailable. Try again.';
+              : errorText(error, 'Account service unavailable. Try again.');
       } finally {
 
         // Leave the form usable after a rejected request
         submit.disabled = false;
-        if (forgot) forgot.disabled = false;
       }
     };
-
-    // Disable both actions while either request is in progress
-    if (forgot)
-      forgot.onclick = async () => {
-
-        // Validate the email without making the user fill in a login password
-        if (forgot.disabled || !emailInput.reportValidity()) return;
-        forgot.disabled = true;
-        submit.disabled = true;
-        status.textContent = 'Sending reset email...';
-        try {
-          const result = await client.auth.resetPasswordForEmail(
-            emailInput.value.trim(),
-            { redirectTo: returnUrl + '?password_reset=1' }
-          );
-          if (result.error) throw result.error;
-
-          // Use the same message so this screen doesn't reveal registered emails
-          status.textContent =
-            'If the account exists, a password reset email will arrive shortly.';
-        } catch (error) {
-          status.textContent =
-            error.message || 'Could not send a reset email. Try again.';
-        } finally {
-          forgot.disabled = false;
-          submit.disabled = false;
-        }
-      };
   }
 
   // This form is only reached through a recovery session from the email link
@@ -536,7 +526,7 @@ const Accounts = (() => {
         // Remove recovery parameters so refresh doesn't reopen the reset flow
         location.replace(returnUrl);
       } catch (error) {
-        status.textContent = error.message || 'Could not save your password. Try again.';
+        status.textContent = errorText(error, 'Could not save your password. Try again.');
       } finally {
         submit.disabled = false;
       }

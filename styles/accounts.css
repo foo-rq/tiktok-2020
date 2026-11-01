@@ -69,6 +69,63 @@
 }
 
 /* Keep every signup error in the same slot so the form doesn't jump around */
-.account-form [role='status'][data-error='true'] {
+/* Include the auth page here so the later generic status colour can't win */
+.auth-page .account-form [role='status'][data-error='true'] {
   color: var(--pink-ink);
+}
+
+/* The liked videos scroll while this footer keeps its own space above navigation */
+.page-footer {
+  flex: 0 0 auto;
+  background: var(--panel);
+  border-top: 1px solid var(--soft);
+}
+
+/* Share the row while letting the longer import label wrap on small screens */
+.page-footer .profile-account-actions {
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 16px;
+  gap: 4px 12px;
+}
+
+/* Small labels can still have a comfortable hit area without looking like main actions */
+.page-footer .profile-account-actions .text-button {
+  min-height: 44px;
+  max-width: 100%;
+  padding: 8px 0;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+/* Keep a visible keyboard target without adding a permanent border to the labels */
+.page-footer button:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: -2px;
+}
+
+/* Only the signed-in Me page gets a visible scrollbar beside its liked videos */
+.page-content:has(.viewer-header) {
+  scrollbar-width: thin;
+  scrollbar-color: var(--muted) var(--panel);
+  scrollbar-gutter: stable;
+}
+
+/* Chromium needs these rules as well as the standard scrollbar properties above */
+.page-content:has(.viewer-header)::-webkit-scrollbar {
+  display: block;
+  width: 6px;
+}
+
+.page-content:has(.viewer-header)::-webkit-scrollbar-track {
+  background: var(--panel);
+}
+
+/* Leave a little panel colour around the thumb so it doesn't look glued to the tiles */
+.page-content:has(.viewer-header)::-webkit-scrollbar-thumb {
+  background: var(--muted);
+  border: 1px solid var(--panel);
+  border-radius: 6px;
 }

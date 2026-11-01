@@ -94,6 +94,16 @@
     content.innerHTML = html;
     $('#sheet-body').append(content);
 
+    // A page footer is a sibling of the scrolling content rather than part of it
+    // This keeps account actions visible above the bottom navigation
+    if (options.footer) {
+      const footer = node('footer', 'page-footer');
+
+      // Like the page body this accepts our own markup rather than account or archive text
+      footer.innerHTML = options.footer;
+      $('#sheet-body').append(footer);
+    }
+
     // Auth uses its own back button and doesn't need another bottom bar
     if(options.navigation===false)return content;
     const navigation = node('nav', 'page-nav');
@@ -365,7 +375,7 @@
     const copy = node('button', 'panel-share-action');
     copy.append(actionIcon('link'), node('span', '', 'Copy link'));
     copy.onclick = async () => {
-      try { await navigator.clipboard.writeText(url); toast('Link copied'); }
+      try { await navigator.clipboard.writeText(url); toast('Link copied.'); }
       catch {
 
         // The user might close the sheet while clipboard permission is pending
@@ -421,7 +431,7 @@
 
     // Following belongs to an account so guests need signup first
     follow.onclick=()=>{if(!Accounts.signedIn){signup(false,()=>creator(post,back));return;}state.following=state.following.includes(post.creator)?state.following.filter(id=>id!==post.creator):[...state.following,post.creator];save();refreshButtons();refresh();};
-    header.append(stats,follow,node('p','profile-note','Counts unavailable'));
+    header.append(stats,follow,node('p','profile-note','Counts unavailable.'));
     body.append(header);
     const tabs=node('div','profile-grid-tabs');tabs.innerHTML='<span class="active" aria-label="Videos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h4v4H3zM10 3h4v4h-4zM17 3h4v4h-4zM3 10h4v4H3zM10 10h4v4h-4zM17 10h4v4h-4zM3 17h4v4H3zM10 17h4v4h-4zM17 17h4v4h-4z"/></svg></span>';
     body.append(tabs);renderPosts(POSTS.filter(item=>item.creator===post.creator),body);
@@ -508,15 +518,15 @@
     status.id = 'signup-status';
     body.append(title, phone, divider, methods, status);
 
-    // Signup goes back to Me where the login action already lives
-    // Only the login screen needs this switch to signup
-    if (login) {
-      const footer = node('div', 'signup-footer');
-      const switchMode = node('button', 'signup-switch', 'Sign up');
-      switchMode.onclick = () => signup(false,back);
-      footer.append(document.createTextNode('Don’t have an account? '), switchMode);
-      body.append(footer);
-    }
+    // Keep the switch at the bottom so either screen can lead to the other
+    // Pass the same return callback through so switching modes doesn't send someone Home
+    const footer = node('div', 'signup-footer');
+    const switchMode = node('button', 'signup-switch', login ? 'Sign up' : 'Log in');
+    switchMode.onclick = () => signup(!login,back);
+
+    // Change the prompt and action together so the footer always offers the other mode
+    footer.append(document.createTextNode(login ? 'Don’t have an account? ' : 'Already have an account? '), switchMode);
+    body.append(footer);
   }
   root.Panels = { discover, share, sound, details, signup, page, authPage, creator, thumbnail, renderPosts, inbox };
   if (typeof module !== 'undefined') {

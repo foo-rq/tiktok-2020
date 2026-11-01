@@ -168,8 +168,10 @@ function harness(options = {}) {
       authPage(title, html) {
         context.openSheet(title, html);
       },
-      page(title, html) {
-        context.openSheet(title, html);
+      page(title, html, options = {}) {
+
+        // Include footer controls in the fake page so profile actions remain testable
+        context.openSheet(title, html + (options.footer || ''));
       },
       renderPosts(posts, container) {
         container.rendered = posts.map((post) => post.id);
@@ -500,7 +502,7 @@ function harness(options = {}) {
   await newSignup.elements['email-form'].onsubmit(event);
   assert.equal(newSignup.views.at(-1).title, 'Me');
   assert(newSignup.views.at(-1).html.includes('Please check your email.'));
-  assert(newSignup.views.at(-1).html.includes('Check spam if you can&#39;t find it'));
+  assert(newSignup.views.at(-1).html.includes('Check spam if you can&#39;t find it.'));
 
   // The email notice should not appear on an ordinary guest profile visit
   newSignup.api.profile();
@@ -524,7 +526,7 @@ function harness(options = {}) {
   taken.elements['account-password'].value = 'Test-password1!';
   await taken.elements['email-form'].onsubmit(event);
   assert.equal(takenRequests, 0);
-  assert.equal(taken.elements['account-status'].textContent, 'Username already taken');
+  assert.equal(taken.elements['account-status'].textContent, 'Username already taken.');
   assert.equal(taken.elements['account-status'].dataset.error, 'true');
   assert.equal(taken.views.at(-1).title, 'Sign up');
 
@@ -570,7 +572,7 @@ function harness(options = {}) {
   nameRace.elements['account-password'].value = 'Test-password1!';
   await nameRace.elements['email-form'].onsubmit(event);
   assert.equal(nameChecks, 2);
-  assert.equal(nameRace.elements['account-status'].textContent, 'Username already taken');
+  assert.equal(nameRace.elements['account-status'].textContent, 'Username already taken.');
   assert.equal(nameRace.elements['account-status'].dataset.error, 'true');
 
   // A confirmed duplicate gets a message without navigating or promising mail
@@ -591,7 +593,7 @@ function harness(options = {}) {
   assert.equal(duplicate.views.at(-1).title, 'Sign up');
   assert.equal(
     duplicate.elements['account-status'].textContent,
-    'An account with this email already exists'
+    'An account with this email already exists.'
   );
   assert.equal(duplicate.elements['account-status'].dataset.error, 'true');
 
@@ -608,7 +610,7 @@ function harness(options = {}) {
   assert.equal(duplicate.views.at(-1).title, 'Sign up');
   assert.equal(
     duplicate.elements['account-status'].textContent,
-    'An account with this email already exists'
+    'An account with this email already exists.'
   );
 
   // Delivery errors belong on the form and must not show the success reminder
@@ -627,7 +629,7 @@ function harness(options = {}) {
   mailFailure.elements['account-password'].value = 'Test-password1!';
   await mailFailure.elements['email-form'].onsubmit(event);
   assert.equal(mailFailure.views.at(-1).title, 'Sign up');
-  assert.match(mailFailure.elements['account-status'].textContent, /Error sending/);
+  assert.equal(mailFailure.elements['account-status'].textContent, 'Error sending confirmation email.');
 
   const signup = deferred(),
     forms = harness({ guest: true, auth: { signUp: () => signup.promise } });
@@ -655,26 +657,10 @@ function harness(options = {}) {
     'Async results must only touch their original form'
   );
 
-  const resetMail = deferred();
-  let emails = 0;
-  forms.auth.resetPasswordForEmail = () => {
-    emails++;
-    return resetMail.promise;
-  };
-  const forgot = forms.elements['forgot-password'];
-  const sending = forgot.onclick();
-  await forgot.onclick();
-  assert.equal(emails, 1, 'Repeated reset clicks send one request');
-  resetMail.resolve({ error: new Error('Offline') });
-  await sending;
-  assert.equal(forgot.disabled, false);
-  assert.match(forms.elements['account-status'].textContent, /Offline/);
-  forms.auth.resetPasswordForEmail = async () => {
-    throw new Error('Network failure');
-  };
-  await forgot.onclick();
-  assert.match(forms.elements['account-status'].textContent, /Network failure/);
+  // The login form no longer offers the unavailable recovery-email action
+  assert(!forms.elements['forgot-password']);
 
+  // Removing the request button shouldn't break recovery links that were already sent
   forms.emit('PASSWORD_RECOVERY', 'viewer-a');
   await forms.runTimers(0);
   const reset = forms.elements,

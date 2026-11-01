@@ -144,3 +144,19 @@ assert.equal(chooser.children[0].textContent, 'Sign up for TikTok 2020');
 const beforeBack = back;
 close.onclick();
 assert.equal(back, beforeBack + 1, 'Signup returns to its originating page');
+
+// A persistent footer belongs between the scrollable content and navigation
+const scrollingPage = context.page('Me', '<div>Liked videos</div>', {
+  tab: 'me',
+  footer: '<button>Log out</button>'
+});
+assert.equal(body.children.length, 3);
+assert.equal(body.children[0], scrollingPage);
+
+// The footer needs its own row rather than being pushed below all the liked tiles
+assert.equal(body.children[1].className, 'page-footer');
+assert.equal(body.children[1].innerHTML, '<button>Log out</button>');
+
+// Navigation still comes last and the scrolling body must not contain the action
+assert.equal(body.children[2].className, 'page-nav');
+assert(!scrollingPage.innerHTML.includes('Log out'));
