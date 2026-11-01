@@ -1,22 +1,30 @@
 # TikTok 2020
 
-**Renegade. Savage. Just 1 more video.**
+## Spend 145 minutes in 2020.
 
-A little time machine for the FYP you remember, or the one you missed.
+I didn't have TikTok during lockdown. Whenever an old video came up, I wanted to keep scrolling through that year. So I made a feed for it.
 
-**[Start scrolling](https://foo-rq.github.io/tiktok-2020/)**
+**[Open the FYP](https://foo-rq.github.io/tiktok-2020/)**
 
 <p>
-  <img src="docs/media/feed.jpg" width="30%" alt="Renegade playing in the feed, with its original proportions and familiar right-hand controls">
-  <img src="docs/media/discover.jpg" width="30%" alt="Discover collections for dance, comedy and food">
-  <img src="docs/media/comments.jpg" width="30%" alt="Archived comments on Renegade, dated February 2020">
+  <img src="docs/media/feed.jpg" width="30%" alt="Jalaiah Harmon's Renegade playing in the feed">
+  <img src="docs/media/discover.jpg" width="30%" alt="Dance, comedy and food collections in Discover">
+  <img src="docs/media/comments.jpg" width="30%" alt="Comments written on the Renegade video in February 2020">
 </p>
 
-## Got 145 minutes?
+There are **541 videos** to get through. Jalaiah Harmon's Renegade is here, along with Savage, Say So and Bored in the House. You can search for one you remember or keep scrolling to see what turns up.
 
-**541 videos. 2 hours and 25 minutes back on your FYP.**
+The comments are old too: **15,616 of them**, all written before January 1, 2021.
 
-The Renegade you never quite learnt. The sound you still know by heart.
+You don't need an account to watch. If you want to keep your likes and follows across devices, you can sign up with email.
+
+<a href="https://foo-rq.github.io/tiktok-2020/docs/media/walkthrough.mp4"><img src="docs/media/walkthrough.gif" width="300" alt="Watch a short walkthrough of playback, comments and Discover"></a>
+
+[Watch the feed and comments](https://foo-rq.github.io/tiktok-2020/docs/media/walkthrough.mp4)
+
+[Watch search and profiles](https://foo-rq.github.io/tiktok-2020/docs/media/search.mp4)
+
+**[I've got 145 minutes](https://foo-rq.github.io/tiktok-2020/)**
 
 <details>
 <summary>Where that number comes from</summary>
@@ -31,27 +39,6 @@ A [CHI 2024 study](https://homes.cs.washington.edu/~franzi/pdf/zannettou-tiktok-
 The calculation uses a ratio of the study’s group averages and 1 visit per video. It is not a measurement of this app or of TikTok in 2020. Replays, loading and time spent in comments change the total.
 
 </details>
-
-## The songs come back pretty quickly
-
-Renegade, Savage, Say So, Tap In, Supalonely and Bored in the House are in the collection. So are the memes, familiar creators and less famous videos that made an FYP feel like an FYP.
-
-- **Keep scrolling.** Videos autoplay and loop. Tap to pause, or use the arrow keys on desktop.
-- **Make it yours.** The feed mixes featured videos with your watch history and interests. Likes and follows help shape it when you're signed in.
-- **Find the one you're thinking of.** Search creators, captions, hashtags or sounds. Recent searches stay on your device.
-- **Read the room as it was.** 15,616 archived comments across 532 videos, all dated before January 1, 2021.
-
-## See it move
-
-<img src="docs/media/walkthrough.gif" width="300" alt="Short walkthrough of Renegade playing, the archived comments and Discover">
-
-[Watch playback and comments](https://foo-rq.github.io/tiktok-2020/docs/media/walkthrough.mp4) or [watch search and profiles](https://foo-rq.github.io/tiktok-2020/docs/media/search.mp4).
-
-## Browse first. Sign up when you feel like it.
-
-You can watch without an account. Sign up with email to save likes and follow creators across devices. Confirm your email, then log in. Device preferences are only imported when you choose to import them.
-
-Light mode is the default. There's a desktop dark-mode toggle for late-night scrolling.
 
 <details>
 <summary>A few things to know</summary>
