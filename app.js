@@ -14,7 +14,17 @@ try {state=Accounts.clean(JSON.parse(localStorage.getItem('tiktok2020')||'{}'));
 
 // Guest history stays on this device while account preferences go to the server
 function save(){if(Accounts.signedIn){Accounts.persist(state);return;}try{localStorage.setItem('tiktok2020',JSON.stringify(state));}catch{toast('Browser storage unavailable. This session still works.');}}
-function toast(text){$('#toast').textContent=text;$('#toast').style.display='block';clearTimeout(toast.timer);toast.timer=setTimeout(()=>$('#toast').style.display='none',3000);}
+function toast(text){
+
+ // Finish status sentences here so callers don't each need their own punctuation check
+ const message=String(text).trim();
+ $('#toast').textContent=/[.!?]$/.test(message)?message:message+'.';
+ $('#toast').style.display='block';
+
+ // A newer message gets its own 3 seconds instead of inheriting the old message's timer
+ clearTimeout(toast.timer);
+ toast.timer=setTimeout(()=>$('#toast').style.display='none',3000);
+}
 let mode='foryou',current=null,startedAt=0,activeSeconds=0,playing=false,serial=0,audioEnabled=false;
 const failedVideos=new Set();
 
@@ -26,7 +36,21 @@ if(!card)return;
 const video=card.querySelector('video');
 
 // Cancel the old play request too so a late promise cannot undo this pause
-if(type==='pause'){card.playRequest++;clearTimeout(card.bufferTimer);delete card.dataset.buffering;video.pause();}
+if(type==='pause'){
+ card.playRequest++;
+
+ // A timer from this video shouldn't show an error after pause or after scrolling away
+ clearTimeout(card.loadTimer);
+ clearTimeout(card.errorTimer);
+ clearTimeout(card.bufferTimer);
+
+ // Clear the flags too or returning to this card can still look like it's recovering
+ delete card.dataset.recovering;
+ delete card.dataset.buffering;
+
+ // Stop the media after invalidating its old promises and timers
+ video.pause();
+}
 if(type==='mute'||type==='unMute')video.muted=type==='mute';
 if(type==='seekTo')video.currentTime=value;
 if(type==='play'){
@@ -234,7 +258,7 @@ if(card===current){finishWatch();send(card,'pause');}
 
 // Show 1 retry state instead of piling loading and error states together
 delete card.dataset.loading;delete card.dataset.recovering;delete card.dataset.buffering;card.dataset.retry='true';
-const title=code===2001?'Server error':code===3001?'Playback error':'Video timed out';
+const title=code===2001?'Server error.':code===3001?'Playback error.':'Video timed out.';
 const start=card.querySelector('.start');start.hidden=false;start.innerHTML='<span class="player-error"><strong>'+title+'</strong><span class="retry-label">Retry</span></span>';
 card.querySelector('.tap-area').setAttribute('aria-label','Retry video');
 }
@@ -329,21 +353,48 @@ async function load(){
 
 // The observer might fire again before the current request finishes
 if(loading||!hasMore||!active())return;
-loading=true;retry.hidden=true;sentinel.hidden=true;status.textContent='Loading comments…';
+
+// Loading stays at the normal status size while the archive note is quieter
+status.className='panel-note';
+loading=true;
+retry.hidden=true;
+
+// Hide the trigger while fetching so it can't queue the same page more than once
+sentinel.hidden=true;
+status.textContent='Loading comments…';
 try{
 const response=await fetch('comments/'+p.id+'-'+page+'.json');
 if(!response.ok)throw new Error('Comments unavailable');
 const result=parseCommentPage(await response.json());
+
+// The fetch can finish after switching videos so check the panel again before appending
 if(!active())return;
 
 // Advance only after a successful response so retry asks for the same failed page
-result.comments.forEach(comment=>appendComment(comment,list));page++;hasMore=result.hasMore;
+result.comments.forEach(comment=>appendComment(comment,list));
+page++;
+hasMore=result.hasMore;
 
 // The last local page still doesn't mean we recovered every original comment
-status.textContent='Partial archive';sentinel.hidden=!hasMore;
+// This is background context rather than the main comment content
+status.className='panel-note archive-note';
+status.textContent='Partial archive';
+
+// Show the trigger again only when another local page exists
+sentinel.hidden=!hasMore;
 if(!hasMore)paging.disconnect();
-}catch{if(active()){status.textContent='Could not load comments.';retry.hidden=false;}}
-finally{loading=false;}
+}catch{
+
+ // Keep the rows already read and offer retry for the page that failed
+ if(active()){
+  status.textContent='Could not load comments.';
+  retry.hidden=false;
+ }
+}finally{
+
+ // A failed request must release the lock too or retry would never start
+ loading=false;
+}
 }
 
 // Retry keeps the failed page number while the first call starts page 0 immediately

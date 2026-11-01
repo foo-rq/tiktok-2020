@@ -211,3 +211,8 @@ noscript {
   }
 }
 
+/* The archive label should sit quietly above the comments */
+/* Match the later sheet selector too so its normal status size doesn't override this */
+.comments-sheet #sheet-body > .panel-note.archive-note {
+  font-size: 12px;
+}

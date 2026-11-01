@@ -268,6 +268,28 @@ context.bindPlayer(other);
   const css = styles.map((path) => fs.readFileSync(path, 'utf8')).join('\n');
   assert(/object-fit\s*:\s*contain/.test(css));
   assert(!/inset\s*:\s*-64px/.test(css));
+
+  // Pausing or leaving a video must cancel delayed startup and error messages
+  const pausedCard = card('6794179724890475782');
+  context.current = pausedCard;
+  context.feed.children.push(pausedCard);
+  context.bindPlayer(pausedCard);
+  context.loadPlayer(pausedCard);
+
+  // Pause before startup finishes to catch a deadline left behind by the old request
+  const startupTimer = pausedCard.loadTimer;
+  context.send(pausedCard, 'pause');
+  assert(!timers.has(startupTimer), 'Pause cancels the startup deadline');
+
+  // A separate delayed server error needs cancelling even if startup already stopped
+  context.handlePlayerError(pausedCard, { errorCode: 2001 });
+  const delayedError = pausedCard.errorTimer;
+  context.send(pausedCard, 'pause');
+  assert(!timers.has(delayedError), 'Pause cancels stale error overlays');
+
+  // Cancelling the timer alone isn't enough if the recovering flag keeps the overlay visible
+  assert.equal(pausedCard.dataset.recovering, undefined);
+
   console.log(
     'Direct playback, pause races, mute, looping, comments, visibility, release, denial and retry passed.'
   );
