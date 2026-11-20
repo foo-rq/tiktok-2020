@@ -7,7 +7,7 @@ I didn't have TikTok during lockdown. Whenever an old video came up, I wanted to
 **[Open the FYP](https://foo-rq.github.io/tiktok-2020/)**
 
 <p>
-  <img src="docs/media/feed.jpg" width="30%" alt="Jalaiah Harmon's Renegade playing in the feed">
+  <img src="docs/media/demo-poster.jpg" width="30%" alt="Doggface skating to Dreams in the feed">
   <img src="docs/media/discover.jpg" width="30%" alt="Dance, comedy and food collections in Discover">
   <img src="docs/media/comments.jpg" width="30%" alt="Comments written on the Renegade video in February 2020">
 </p>
@@ -18,7 +18,7 @@ The comments are old too: **15,616 of them**, all written before January 1, 2021
 
 You don't need an account to watch. If you want to keep your likes and follows across devices, you can sign up with email.
 
-<a href="https://foo-rq.github.io/tiktok-2020/docs/media/demo.mp4"><img src="docs/media/demo-poster.jpg" width="300" alt="Play the 18-second app demo"></a>
+<a href="https://foo-rq.github.io/tiktok-2020/docs/media/demo.mp4"><img src="docs/media/demo.gif" width="300" alt="18-second animated app demo with playback, comments, Discover and search"></a>
 
 **[Watch the 18-second demo](https://foo-rq.github.io/tiktok-2020/docs/media/demo.mp4)**
 
