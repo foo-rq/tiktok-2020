@@ -46,6 +46,7 @@ const nav = {
   }
 };
 const context = vm.createContext({
+  POST_ASSETS: {},
   document: { createElement: el, querySelectorAll: () => [nav] },
   openSheet() {
     body.children = [];
@@ -89,6 +90,28 @@ assert.equal(valid.loading, 'lazy');
 assert.equal(valid.referrerPolicy, 'no-referrer');
 valid.onerror();
 assert(valid.removed);
+
+// Start with the bundled file so working covers don't wait for a remote redirect
+context.POST_ASSETS['6794179724890475782'] = {
+  cover: 'assets/covers/6794179724890475782.jpg'
+};
+const cached = context.thumbnail({ id: '6794179724890475782' });
+assert.equal(cached.src, 'assets/covers/6794179724890475782.jpg');
+
+// The first failure should try the remote cover without removing the image yet
+cached.onerror();
+assert.equal(cached.src, valid.src);
+assert(!cached.removed);
+
+// A second failure must stop retrying and leave the existing text fallback visible
+cached.onerror();
+assert(cached.removed);
+
+// A manifest entry must not send the browser to an unrelated external image
+context.POST_ASSETS['6794179724890475782'] = {
+  cover: 'https://example.com/untrusted.jpg'
+};
+assert.equal(context.thumbnail({ id: '6794179724890475782' }).src, valid.src);
 
 // Reject an ID that could turn a cover lookup into a different external request
 assert.equal(

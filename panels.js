@@ -140,10 +140,29 @@
     image.loading = 'lazy';
     image.decoding = 'async';
     image.referrerPolicy = 'no-referrer';
-    if (/^\d{19}$/.test(post.id)) image.src = 'https://offload.tnktok.com/generate/cover/' + post.id;
 
-    // Drop a failed image so the text fallback stays visible
-    image.onerror = () => image.remove();
+    // Check the ID before building either path so imported text can't become a URL
+    const valid = /^\d{19}$/.test(post.id);
+    const remote = valid ? 'https://offload.tnktok.com/generate/cover/' + post.id : undefined;
+    const cached = typeof POST_ASSETS !== 'undefined' && POST_ASSETS[post.id]?.cover;
+
+    // Only trust the exact bundled filename for this video rather than any path in the map
+    let local = valid && cached === 'assets/covers/' + post.id + '.jpg';
+    if (valid) image.src = local ? cached : remote;
+
+    // A missing bundled file gets 1 remote attempt before falling back to the tile text
+    image.onerror = () => {
+      if (local) {
+
+        // Flip this before assigning src so another error can't retry the same URL forever
+        local = false;
+        image.src = remote;
+      } else {
+
+        // Removing the broken image reveals the caption that's already underneath it
+        image.remove();
+      }
+    };
     return image;
   }
 
