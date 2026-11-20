@@ -18,11 +18,11 @@ The comments are old too: **15,616 of them**, all written before January 1, 2021
 
 You don't need an account to watch. If you want to keep your likes and follows across devices, you can sign up with email.
 
-<a href="https://foo-rq.github.io/tiktok-2020/docs/media/walkthrough.mp4"><img src="docs/media/walkthrough.gif" width="300" alt="Watch a short walkthrough of playback, comments and Discover"></a>
+<a href="https://foo-rq.github.io/tiktok-2020/docs/media/demo.mp4"><img src="docs/media/demo-poster.jpg" width="300" alt="Play the 18-second app demo"></a>
 
-[Watch the feed and comments](https://foo-rq.github.io/tiktok-2020/docs/media/walkthrough.mp4)
+**[Watch the 18-second demo](https://foo-rq.github.io/tiktok-2020/docs/media/demo.mp4)**
 
-[Watch search and profiles](https://foo-rq.github.io/tiktok-2020/docs/media/search.mp4)
+Playback, sound controls, comments, a swipe, Discover, search and Inbox in 1 continuous take.
 
 **[I've got 145 minutes](https://foo-rq.github.io/tiktok-2020/)**
 
